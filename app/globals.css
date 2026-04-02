@@ -1,0 +1,19 @@
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --night:#0C0C0A;--surface:#1A1A18;--surface2:#222220;--surface3:#2A2A28;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --teal:#1D9E75;--teal-soft:#5DCAA5;--teal-dark:#04342C;
+  --purple:#534AB7;--purple-soft:#AFA9EC;--purple-dark:#26215C;
+  --amber:#EF9F27;--amber-soft:#FAC775;
+  --coral:#D85A30;
+  --text:#F0EFE8;--text-muted:#8A8880;--text-dim:#4A4A47;
+  --ldr-bubble:#1A1040;--ldr-text:#CECBF6;
+  --emp-bubble:#04342C;--emp-text:#9FE1CB;
+}
+html,body{height:100%;background:var(--night);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;overflow:hidden}
+*::-webkit-scrollbar{width:4px}
+*::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+textarea::placeholder{color:var(--text-dim)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
