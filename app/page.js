@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 const SYS = {
   leader: `You are Mosen, an AI change partner for leaders. Not a tool — a trusted colleague. Warm but direct. Peer-level. One question per message. No bullet points. No jargon. Short messages. If given a business answer to a people question, redirect: "That's the business case. I'm curious about the human one."`,
@@ -22,21 +24,13 @@ async function ask(messages, sys) {
   return t;
 }
 
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const mkId = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 const fmt = ts => {
   const d = new Date(ts), now = new Date(), diff = now - d;
   if (diff < 86400000) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   if (diff < 604800000) return d.toLocaleDateString([], { weekday: 'short' });
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
-
-function getUserId() {
-  try {
-    let id = localStorage.getItem('mosen_uid');
-    if (!id) { id = uid(); localStorage.setItem('mosen_uid', id); }
-    return id;
-  } catch { return 'anon_' + Math.random().toString(36).slice(2); }
-}
 
 async function kvSave(userId, chats) {
   try {
@@ -101,8 +95,12 @@ function SideItem({ chat, active, ac, al, onOpen, onDel }) {
   );
 }
 
-export default function App() {
-  const [userId] = useState(getUserId);
+function AppInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get userId from URL param, or create one and redirect
+  const [userId, setUserId] = useState(null);
   const [all, setAll] = useState([]);
   const [syncing, setSyncing] = useState(true);
   const [aid, setAid] = useState(null);
@@ -112,12 +110,27 @@ export default function App() {
   const [inp, setInp] = useState('');
   const [busy, setBusy] = useState(false);
   const [side, setSide] = useState(true);
+  const [copied, setCopied] = useState(false);
   const endRef = useRef(null);
   const taRef = useRef(null);
   const saveTimer = useRef(null);
 
-  // Load from Redis on mount
+  // On mount: read ?user= from URL, or generate one and push to URL
   useEffect(() => {
+    const paramId = searchParams.get('user');
+    if (paramId) {
+      setUserId(paramId);
+    } else {
+      const newId = mkId();
+      router.replace(`/?user=${newId}`);
+      setUserId(newId);
+    }
+  }, []);
+
+  // Load chats from KV once userId is known
+  useEffect(() => {
+    if (!userId) return;
+    setSyncing(true);
     kvLoad(userId).then(chats => {
       setAll(chats);
       setSyncing(false);
@@ -129,13 +142,12 @@ export default function App() {
   }, []);
   useEffect(scroll, [msgs, busy, scroll]);
 
-  // Save to Redis with debounce
   const persist = useCallback((chats) => {
+    if (!userId) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => kvSave(userId, chats), 800);
   }, [userId]);
 
-  // Sync messages into all[] and persist
   useEffect(() => {
     if (!aid || msgs.length === 0) return;
     setAll(prev => {
@@ -151,11 +163,10 @@ export default function App() {
   }, [msgs, hist, aid, persist]);
 
   const startNewChat = useCallback((pid) => {
-    const id = uid();
+    const id = mkId();
     const nc = { id, persona: pid, messages: [], apiHistory: [], preview: 'New conversation', createdAt: Date.now(), updatedAt: Date.now() };
     setAll(prev => { const u = [nc, ...prev]; persist(u); return u; });
     setAid(id); setPersona(pid); setMsgs([]); setHist([]); setInp(''); setBusy(true);
-
     const ms = [{ role: 'user', content: OPEN[pid] }];
     ask(ms, SYS[pid])
       .then(text => {
@@ -197,6 +208,12 @@ export default function App() {
     } finally { setBusy(false); }
   }, [inp, busy, msgs, hist, persona]);
 
+  const copyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const ac = persona === 'leader' ? '#534AB7' : '#1D9E75';
   const al = persona === 'leader' ? '#F0EFFE' : '#F0FAF6';
   const ab = persona === 'leader' ? '#F6F5FF' : '#F0FAF6';
@@ -208,7 +225,6 @@ export default function App() {
   return (
     <div style={{ height: '100vh', display: 'flex', fontFamily: "'DM Sans',system-ui,sans-serif", fontSize: 14, color: '#1A1A18', background: '#FAFAF8', overflow: 'hidden' }}>
 
-      {/* SIDEBAR */}
       {side && (
         <div style={{ width: 256, borderRight: '1px solid #EBEBEA', display: 'flex', flexDirection: 'column', background: '#ffffff', flexShrink: 0 }}>
           <div style={{ padding: '16px 14px 12px', borderBottom: '1px solid #EBEBEA' }}>
@@ -261,10 +277,17 @@ export default function App() {
               </>
             )}
           </div>
+
+          {/* Copy link button at bottom */}
+          <div style={{ padding: '10px 12px', borderTop: '1px solid #EBEBEA' }}>
+            <button onClick={copyLink}
+              style={{ width: '100%', padding: '7px 10px', borderRadius: 9, border: '1px solid #EBEBEA', background: copied ? '#F0FAF6' : 'transparent', color: copied ? '#1D9E75' : '#999', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all .2s' }}>
+              {copied ? '✓ Link copied!' : '🔗 Copy link to your chats'}
+            </button>
+          </div>
         </div>
       )}
 
-      {/* MAIN */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         <div style={{ padding: '11px 18px', borderBottom: '1px solid #EBEBEA', display: 'flex', alignItems: 'center', gap: 10, background: '#ffffff', flexShrink: 0, minHeight: 52 }}>
           <button onClick={() => setSide(o => !o)}
@@ -364,5 +387,13 @@ export default function App() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
       `}</style>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CCC', fontSize: 13 }}>Loading…</div>}>
+      <AppInner />
+    </Suspense>
   );
 }
