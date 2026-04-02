@@ -30,20 +30,17 @@ const fmt = ts => {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
-// Get or create a stable userId stored in localStorage
 function getUserId() {
   try {
     let id = localStorage.getItem('mosen_uid');
     if (!id) { id = uid(); localStorage.setItem('mosen_uid', id); }
     return id;
-  } catch { return 'anon'; }
+  } catch { return 'anon_' + Math.random().toString(36).slice(2); }
 }
 
-// Save chats to Vercel KV
-async function saveToKV(userId, chats) {
+async function kvSave(userId, chats) {
   try {
-    // Strip apiHistory from KV to save space — only save display messages
-    const slim = chats.map(c => ({ ...c, apiHistory: [] }));
+    const slim = chats.map(({ apiHistory: _, ...rest }) => rest);
     await fetch('/api/chats', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, chats: slim })
@@ -51,12 +48,11 @@ async function saveToKV(userId, chats) {
   } catch {}
 }
 
-// Load chats from Vercel KV
-async function loadFromKV(userId) {
+async function kvLoad(userId) {
   try {
-    const r = await fetch(`/api/chats?userId=${userId}`);
+    const r = await fetch(`/api/chats?userId=${encodeURIComponent(userId)}`);
     const d = await r.json();
-    return d.chats || [];
+    return Array.isArray(d.chats) ? d.chats : [];
   } catch { return []; }
 }
 
@@ -106,9 +102,9 @@ function SideItem({ chat, active, ac, al, onOpen, onDel }) {
 }
 
 export default function App() {
-  const [userId] = useState(() => getUserId());
+  const [userId] = useState(getUserId);
   const [all, setAll] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(true);
   const [aid, setAid] = useState(null);
   const [persona, setPersona] = useState('leader');
   const [msgs, setMsgs] = useState([]);
@@ -116,16 +112,15 @@ export default function App() {
   const [inp, setInp] = useState('');
   const [busy, setBusy] = useState(false);
   const [side, setSide] = useState(true);
-  const [showId, setShowId] = useState(false);
   const endRef = useRef(null);
   const taRef = useRef(null);
   const saveTimer = useRef(null);
 
-  // Load chats from KV on mount
+  // Load from Redis on mount
   useEffect(() => {
-    loadFromKV(userId).then(chats => {
+    kvLoad(userId).then(chats => {
       setAll(chats);
-      setLoading(false);
+      setSyncing(false);
     });
   }, [userId]);
 
@@ -134,13 +129,13 @@ export default function App() {
   }, []);
   useEffect(scroll, [msgs, busy, scroll]);
 
-  // Debounced save to KV whenever chats change
-  const debouncedSave = useCallback((chats) => {
+  // Save to Redis with debounce
+  const persist = useCallback((chats) => {
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveToKV(userId, chats), 1000);
+    saveTimer.current = setTimeout(() => kvSave(userId, chats), 800);
   }, [userId]);
 
-  // Persist messages when they change
+  // Sync messages into all[] and persist
   useEffect(() => {
     if (!aid || msgs.length === 0) return;
     setAll(prev => {
@@ -150,20 +145,17 @@ export default function App() {
           ? { ...c, messages: msgs, apiHistory: hist, updatedAt: Date.now(), preview: lu?.text?.slice(0, 50) || c.preview }
           : c
       );
-      debouncedSave(updated);
+      persist(updated);
       return updated;
     });
-  }, [msgs, hist, aid, debouncedSave]);
+  }, [msgs, hist, aid, persist]);
 
   const startNewChat = useCallback((pid) => {
     const id = uid();
     const nc = { id, persona: pid, messages: [], apiHistory: [], preview: 'New conversation', createdAt: Date.now(), updatedAt: Date.now() };
-    setAll(prev => {
-      const updated = [nc, ...prev];
-      debouncedSave(updated);
-      return updated;
-    });
+    setAll(prev => { const u = [nc, ...prev]; persist(u); return u; });
     setAid(id); setPersona(pid); setMsgs([]); setHist([]); setInp(''); setBusy(true);
+
     const ms = [{ role: 'user', content: OPEN[pid] }];
     ask(ms, SYS[pid])
       .then(text => {
@@ -171,14 +163,14 @@ export default function App() {
         const nm = [{ from: 'mosen', text }];
         setHist(nh); setMsgs(nm);
         setAll(prev => {
-          const updated = prev.map(c => c.id === id ? { ...c, messages: nm, apiHistory: nh, updatedAt: Date.now() } : c);
-          debouncedSave(updated);
-          return updated;
+          const u = prev.map(c => c.id === id ? { ...c, messages: nm, apiHistory: nh, updatedAt: Date.now() } : c);
+          persist(u);
+          return u;
         });
       })
       .catch(e => setMsgs([{ from: 'error', text: e.message }]))
       .finally(() => setBusy(false));
-  }, [debouncedSave]);
+  }, [persist]);
 
   const openChat = useCallback((chat) => {
     setAid(chat.id); setPersona(chat.persona);
@@ -187,13 +179,9 @@ export default function App() {
 
   const delChat = useCallback((id, e) => {
     e.stopPropagation();
-    setAll(prev => {
-      const updated = prev.filter(c => c.id !== id);
-      debouncedSave(updated);
-      return updated;
-    });
+    setAll(prev => { const u = prev.filter(c => c.id !== id); persist(u); return u; });
     if (aid === id) { setAid(null); setMsgs([]); setHist([]); }
-  }, [aid, debouncedSave]);
+  }, [aid, persist]);
 
   const send = useCallback(async (ov) => {
     const txt = (ov || inp).trim(); if (!txt || busy) return;
@@ -227,6 +215,7 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
               <MosenAvatar color={ac} bg={avBg} />
               <span style={{ fontSize: 14, fontWeight: 700, color: '#1A1A18', letterSpacing: '-0.01em' }}>Mosen</span>
+              {syncing && <span style={{ fontSize: 10, color: '#C0C0BA', marginLeft: 'auto' }}>syncing…</span>}
             </div>
             <div style={{ display: 'flex', gap: 2, background: '#F3F3F0', borderRadius: 20, padding: 3 }}>
               {['leader', 'employee'].map(pt => {
@@ -253,8 +242,8 @@ export default function App() {
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '4px 8px 16px' }}>
-            {loading && <div style={{ padding: '24px 8px', color: '#CCC', fontSize: 12, textAlign: 'center' }}>Loading…</div>}
-            {!loading && all.length === 0 && (
+            {syncing && <div style={{ padding: '24px 8px', color: '#CCC', fontSize: 12, textAlign: 'center' }}>Loading your chats…</div>}
+            {!syncing && all.length === 0 && (
               <div style={{ padding: '32px 8px', color: '#CCC', fontSize: 12, textAlign: 'center', lineHeight: 1.8 }}>
                 Start a conversation<br />to see it here
               </div>
@@ -270,34 +259,6 @@ export default function App() {
                 <div style={{ fontSize: 10, color: '#C8C8C2', padding: '12px 8px 4px', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>Employee</div>
                 {eChats.map(c => <SideItem key={c.id} chat={c} active={c.id === aid} ac="#1D9E75" al="#F0FAF6" onOpen={openChat} onDel={delChat} />)}
               </>
-            )}
-          </div>
-
-          {/* User ID footer — copy to use on another device */}
-          <div style={{ padding: '10px 12px', borderTop: '1px solid #EBEBEA' }}>
-            <button onClick={() => setShowId(o => !o)}
-              style={{ fontSize: 10, color: '#C0C0BA', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
-              {showId ? '▲ hide your ID' : '▼ sync to another device'}
-            </button>
-            {showId && (
-              <div style={{ marginTop: 6 }}>
-                <div style={{ fontSize: 10, color: '#999', marginBottom: 4 }}>Copy this ID and paste it on your other device:</div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <code style={{ fontSize: 10, background: '#F5F5F2', padding: '4px 6px', borderRadius: 6, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#555' }}>{userId}</code>
-                  <button onClick={() => navigator.clipboard.writeText(userId)}
-                    style={{ fontSize: 10, padding: '4px 8px', borderRadius: 6, border: '1px solid #E8E8E4', background: 'transparent', cursor: 'pointer', color: '#888', flexShrink: 0 }}>copy</button>
-                </div>
-                <div style={{ marginTop: 6 }}>
-                  <input placeholder="Paste an ID to sync" style={{ width: '100%', fontSize: 10, padding: '5px 8px', borderRadius: 6, border: '1px solid #E8E8E4', outline: 'none', fontFamily: 'inherit' }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        const newId = e.target.value.trim();
-                        if (newId) { localStorage.setItem('mosen_uid', newId); window.location.reload(); }
-                      }
-                    }} />
-                  <div style={{ fontSize: 9, color: '#CCC', marginTop: 3 }}>Press Enter to switch to this ID</div>
-                </div>
-              </div>
             )}
           </div>
         </div>
