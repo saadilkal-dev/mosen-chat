@@ -2,6 +2,8 @@ import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/admin
 // Returns all sessions for the admin dashboard, grouped by persona
 export async function GET() {

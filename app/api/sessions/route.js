@@ -2,6 +2,8 @@ import { Redis } from '@upstash/redis';
 
 const redis = Redis.fromEnv();
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/sessions?browserId=xxx&persona=leader
 // Returns all sessions for this browser+persona combo
 export async function GET(req) {
