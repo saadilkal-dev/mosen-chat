@@ -243,9 +243,14 @@ function FeedbackPanel() {
         return (
           <div key={i} style={{ border: '1px solid #EBEBEA', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
             <div onClick={() => setExpanded(isOpen ? null : i)}
-              style={{ padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', background: isOpen ? '#FAFAF8' : '#fff' }}>
+              style={{ padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: isOpen ? '#FAFAF8' : '#fff', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, fontWeight: 600, color, background: bg, padding: '2px 8px', borderRadius: 20, flexShrink: 0 }}>{entry.persona}</span>
-              <span style={{ fontSize: 11, color: '#C0C0BA', fontFamily: 'monospace' }}>{entry.browserId?.slice(0, 12)}…</span>
+              <span style={{ fontSize: 11, color: '#C0C0BA', fontFamily: 'monospace', flexShrink: 0 }}>{entry.browserId?.slice(0, 10)}…</span>
+              {entry.chatId && (
+                <span style={{ fontSize: 10, color: '#C0C0BA', background: '#F5F5F2', padding: '2px 7px', borderRadius: 6, fontFamily: 'monospace', flexShrink: 0 }}>
+                  chat: {entry.chatId.slice(0, 10)}…
+                </span>
+              )}
               <span style={{ fontSize: 11, color: '#999', marginLeft: 'auto' }}>{fmtFull2(entry.submittedAt)}</span>
               <span style={{ fontSize: 12, color: '#CCC', marginLeft: 8 }}>{isOpen ? '▲' : '▼'}</span>
             </div>
@@ -300,7 +305,7 @@ export default function AdminPage() {
   const totalMessages = allSessions.reduce((acc, s) => acc + (s.messageCount || 0), 0);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F7F5', fontFamily: "'DM Sans',system-ui,sans-serif", color: '#1A1A18' }}>
+    <div style={{ minHeight: '100vh', overflowY: 'auto', background: '#F7F7F5', fontFamily: "'DM Sans',system-ui,sans-serif", color: '#1A1A18' }}>
 
       {/* Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid #EBEBEA', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -61,7 +61,7 @@ async function kvSave(browserId, chats) {
 
 // ── Feedback Modal ──────────────────────────────────────────────────────────
 
-function FeedbackModal({ browserId, onClose }) {
+function FeedbackModal({ browserId, chatId, onClose }) {
   const TOTAL = 5;
   const [step, setStep] = useState('intro');
   const [qNum, setQNum] = useState(1);
@@ -106,7 +106,7 @@ function FeedbackModal({ browserId, onClose }) {
         await fetch('/api/feedback/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ browserId, persona: PERSONA, responses: newHistory })
+          body: JSON.stringify({ browserId, persona: PERSONA, chatId, responses: newHistory })
         });
       } catch {}
       setSaving(false);
@@ -508,8 +508,8 @@ export default function EmployeePage() {
         )}
       </div>
 
-      {/* ── Feedback Button ── */}
-      {!showFeedback && (
+      {/* ── Feedback Button — only shown when a chat is active ── */}
+      {aid && !showFeedback && (
         <button onClick={() => setShowFeedback(true)}
           style={{
             position: 'fixed', bottom: 24, right: 24, zIndex: 150,
@@ -531,8 +531,8 @@ export default function EmployeePage() {
         </button>
       )}
 
-      {showFeedback && browserId && (
-        <FeedbackModal browserId={browserId} onClose={() => setShowFeedback(false)} />
+      {showFeedback && browserId && aid && (
+        <FeedbackModal browserId={browserId} chatId={aid} onClose={() => setShowFeedback(false)} />
       )}
 
       <style>{`

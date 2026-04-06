@@ -5,10 +5,10 @@ const redis = Redis.fromEnv();
 export const dynamic = 'force-dynamic';
 
 // POST /api/feedback/save
-// Body: { browserId, persona, responses: [{question, answer, questionNumber}] }
+// Body: { browserId, persona, chatId, responses: [{question, answer, questionNumber}] }
 export async function POST(req) {
   try {
-    const { browserId, persona, responses } = await req.json();
+    const { browserId, persona, chatId, responses } = await req.json();
     if (!browserId || !persona || !responses) {
       return Response.json({ ok: false }, { status: 400 });
     }
@@ -16,6 +16,7 @@ export async function POST(req) {
     const entry = {
       browserId,
       persona,
+      chatId: chatId || null,
       responses,
       submittedAt: Date.now(),
     };
