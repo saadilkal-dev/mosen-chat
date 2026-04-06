@@ -59,6 +59,195 @@ async function kvSave(browserId, chats) {
   } catch {}
 }
 
+// ── Feedback Modal ──────────────────────────────────────────────────────────
+
+function FeedbackModal({ browserId, onClose }) {
+  const TOTAL = 5;
+  const [step, setStep] = useState('intro');
+  const [qNum, setQNum] = useState(1);
+  const [question, setQuestion] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState(null);
+
+  const fetchQuestion = useCallback(async (num, hist) => {
+    setLoading(true);
+    setSelected(null);
+    try {
+      const r = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ persona: PERSONA, history: hist, questionNumber: num })
+      });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      setQuestion(d);
+      setStep('question');
+    } catch (e) {
+      setStep('error');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const startFeedback = () => {
+    fetchQuestion(1, []);
+  };
+
+  const handleAnswer = async (option) => {
+    setSelected(option);
+    const newHistory = [...history, { question: question.question, answer: option, questionNumber: qNum }];
+    setHistory(newHistory);
+
+    if (question.isLast || qNum >= TOTAL) {
+      setSaving(true);
+      try {
+        await fetch('/api/feedback/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ browserId, persona: PERSONA, responses: newHistory })
+        });
+      } catch {}
+      setSaving(false);
+      setStep('done');
+    } else {
+      const next = qNum + 1;
+      setQNum(next);
+      setTimeout(() => fetchQuestion(next, newHistory), 300);
+    }
+  };
+
+  const progress = qNum / TOTAL;
+
+  return (
+    <>
+      <div onClick={onClose}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200, backdropFilter: 'blur(2px)' }} />
+
+      <div style={{
+        position: 'fixed', bottom: 90, right: 24, width: 420, zIndex: 201,
+        background: '#111', borderRadius: 20, overflow: 'hidden',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+        fontFamily: "'DM Sans',system-ui,sans-serif",
+        animation: 'slideUp .25s ease'
+      }}>
+        <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #222', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="8" r="4" fill="#fff" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="12" cy="8" r="2" fill="#222" />
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Quick feedback</div>
+              <div style={{ fontSize: 11, color: '#666' }}>5 questions · helps us improve Mosen</div>
+            </div>
+          </div>
+          <button onClick={onClose}
+            style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid #333', background: 'transparent', color: '#666', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+        </div>
+
+        {step === 'question' && (
+          <div style={{ height: 3, background: '#222' }}>
+            <div style={{ height: '100%', background: '#fff', width: `${progress * 100}%`, transition: 'width .4s ease', borderRadius: 2 }} />
+          </div>
+        )}
+
+        <div style={{ padding: '24px 20px 22px', minHeight: 180 }}>
+
+          {step === 'intro' && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 32, marginBottom: 14 }}>💬</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 10, lineHeight: 1.4 }}>
+                How was your experience with Mosen?
+              </div>
+              <div style={{ fontSize: 13, color: '#666', lineHeight: 1.65, marginBottom: 24 }}>
+                Five quick questions. Your answers are anonymous and help us understand if Mosen actually helps people going through change.
+              </div>
+              <button onClick={startFeedback}
+                style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: '#fff', color: '#111', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '-0.01em' }}>
+                Start — takes 2 minutes
+              </button>
+            </div>
+          )}
+
+          {(step === 'question' || loading) && (
+            <div>
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Question {qNum} of {TOTAL}
+              </div>
+
+              {loading ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '12px 0' }}>
+                  {[0,1,2].map(j => (
+                    <div key={j} style={{ width: 7, height: 7, borderRadius: '50%', background: '#444', animation: `blink 1.2s ease-in-out ${j*0.2}s infinite` }} />
+                  ))}
+                </div>
+              ) : question && (
+                <>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', lineHeight: 1.5, marginBottom: 18 }}>
+                    {question.question}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(question.options || []).map((opt, i) => (
+                      <button key={i} onClick={() => handleAnswer(opt)} disabled={selected !== null}
+                        style={{
+                          padding: '11px 14px', borderRadius: 10, border: `1px solid ${selected === opt ? '#fff' : '#2a2a2a'}`,
+                          background: selected === opt ? '#fff' : '#1a1a1a',
+                          color: selected === opt ? '#111' : '#ccc',
+                          fontSize: 13, cursor: selected !== null ? 'default' : 'pointer',
+                          textAlign: 'left', fontFamily: 'inherit', lineHeight: 1.45,
+                          transition: 'all .15s', fontWeight: selected === opt ? 600 : 400,
+                        }}
+                        onMouseEnter={e => { if (!selected) { e.currentTarget.style.borderColor = '#555'; e.currentTarget.style.color = '#fff'; }}}
+                        onMouseLeave={e => { if (!selected) { e.currentTarget.style.borderColor = '#2a2a2a'; e.currentTarget.style.color = '#ccc'; }}}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {step === 'done' && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 36, marginBottom: 14 }}>{saving ? '…' : '✓'}</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 10 }}>
+                {saving ? 'Saving your responses…' : 'Thank you.'}
+              </div>
+              <div style={{ fontSize: 13, color: '#666', lineHeight: 1.65, marginBottom: 22 }}>
+                {saving ? '' : 'Your answers are anonymous. They help us make Mosen more useful for everyone going through change.'}
+              </div>
+              {!saving && (
+                <button onClick={onClose}
+                  style={{ padding: '11px 24px', borderRadius: 10, border: '1px solid #333', background: 'transparent', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Close
+                </button>
+              )}
+            </div>
+          )}
+
+          {step === 'error' && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>Something went wrong loading the question.</div>
+              <button onClick={() => fetchQuestion(qNum, history)}
+                style={{ padding: '10px 20px', borderRadius: 9, border: '1px solid #333', background: 'transparent', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Try again
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Main Components ─────────────────────────────────────────────────────────
+
 function MosenAvatar() {
   return (
     <div style={{ width: 32, height: 32, borderRadius: '50%', background: AVBG, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -114,6 +303,7 @@ export default function EmployeePage() {
   const [inp, setInp] = useState('');
   const [busy, setBusy] = useState(false);
   const [side, setSide] = useState(true);
+  const [showFeedback, setShowFeedback] = useState(false);
   const endRef = useRef(null);
   const taRef = useRef(null);
   const saveTimer = useRef(null);
@@ -318,8 +508,36 @@ export default function EmployeePage() {
         )}
       </div>
 
+      {/* ── Feedback Button ── */}
+      {!showFeedback && (
+        <button onClick={() => setShowFeedback(true)}
+          style={{
+            position: 'fixed', bottom: 24, right: 24, zIndex: 150,
+            background: '#111', color: '#fff',
+            padding: '13px 20px', borderRadius: 50,
+            border: 'none', cursor: 'pointer',
+            fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', gap: 8,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
+            letterSpacing: '-0.01em',
+            transition: 'transform .15s, box-shadow .15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.45)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.35)'; }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Share feedback
+        </button>
+      )}
+
+      {showFeedback && browserId && (
+        <FeedbackModal browserId={browserId} onClose={() => setShowFeedback(false)} />
+      )}
+
       <style>{`
         @keyframes blink { 0%,100%{opacity:.2} 50%{opacity:.8} }
+        @keyframes slideUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
         textarea::placeholder { color: #B8B8B0; }
         *::-webkit-scrollbar { width: 4px; }
         *::-webkit-scrollbar-thumb { background: #E0E0DC; border-radius: 2px; }

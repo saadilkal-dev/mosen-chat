@@ -209,12 +209,73 @@ function ChatViewer({ session, onClose }) {
   );
 }
 
+const fmtFull2 = ts => {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
+function FeedbackPanel() {
+  const [feedback, setFeedback] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/admin/feedback')
+      .then(r => r.json())
+      .then(d => { setFeedback(d.feedback || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div style={{ padding: '48px 20px', textAlign: 'center', color: '#CCC', fontSize: 13 }}>Loading feedback…</div>;
+  if (feedback.length === 0) return (
+    <div style={{ padding: '48px 20px', textAlign: 'center', color: '#CCC', fontSize: 13, lineHeight: 1.8 }}>
+      No feedback yet.<br /><span style={{ fontSize: 12 }}>Appears once a leader or employee completes the feedback flow.</span>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' }}>
+      {feedback.map((entry, i) => {
+        const isLeader = entry.persona === 'leader';
+        const color = isLeader ? '#534AB7' : '#1D9E75';
+        const bg = isLeader ? '#F0EFFE' : '#E6F7F0';
+        const isOpen = expanded === i;
+        return (
+          <div key={i} style={{ border: '1px solid #EBEBEA', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+            <div onClick={() => setExpanded(isOpen ? null : i)}
+              style={{ padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', background: isOpen ? '#FAFAF8' : '#fff' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color, background: bg, padding: '2px 8px', borderRadius: 20, flexShrink: 0 }}>{entry.persona}</span>
+              <span style={{ fontSize: 11, color: '#C0C0BA', fontFamily: 'monospace' }}>{entry.browserId?.slice(0, 12)}…</span>
+              <span style={{ fontSize: 11, color: '#999', marginLeft: 'auto' }}>{fmtFull2(entry.submittedAt)}</span>
+              <span style={{ fontSize: 12, color: '#CCC', marginLeft: 8 }}>{isOpen ? '▲' : '▼'}</span>
+            </div>
+            {isOpen && (
+              <div style={{ borderTop: '1px solid #F2F2F0', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {(entry.responses || []).map((r, j) => (
+                  <div key={j}>
+                    <div style={{ fontSize: 11, color: '#999', marginBottom: 5, fontWeight: 600 }}>Q{r.questionNumber}</div>
+                    <div style={{ fontSize: 13, color: '#333', marginBottom: 6, lineHeight: 1.5 }}>{r.question}</div>
+                    <div style={{ fontSize: 13, color, background: bg, padding: '7px 12px', borderRadius: 8, display: 'inline-block', fontWeight: 500 }}>
+                      → {r.answer}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [lastRefresh, setLastRefresh] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [tab, setTab] = useState('sessions'); // 'sessions' | 'feedback'
 
   const load = async () => {
     setLoading(true);
@@ -267,6 +328,23 @@ export default function AdminPage() {
 
       <div style={{ maxWidth: selected ? 900 : 1000, margin: '0 auto', padding: '32px 24px', transition: 'max-width .2s' }}>
 
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: 4, background: '#EEEEED', borderRadius: 12, padding: 4, marginBottom: 28, width: 'fit-content' }}>
+          {[{ id: 'sessions', label: 'Sessions' }, { id: 'feedback', label: 'Feedback' }].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              style={{
+                padding: '8px 18px', borderRadius: 9, border: 'none', fontSize: 13, cursor: 'pointer',
+                fontFamily: 'inherit', fontWeight: tab === t.id ? 600 : 400,
+                background: tab === t.id ? '#fff' : 'transparent',
+                color: tab === t.id ? '#1A1A18' : '#999',
+                boxShadow: tab === t.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all .15s',
+              }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         {/* Stats */}
         <div style={{ display: 'flex', gap: 14, marginBottom: 32, flexWrap: 'wrap' }}>
           <StatCard label="Total browsers" value={allSessions.length} />
@@ -275,8 +353,18 @@ export default function AdminPage() {
           <StatCard label="Total messages" value={totalMessages} />
         </div>
 
+        {tab === 'feedback' && (
+          <div style={{ background: '#fff', border: '1px solid #EBEBEA', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #EBEBEA' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A18' }}>Feedback responses</div>
+              <div style={{ fontSize: 11, color: '#999', marginTop: 3 }}>Click any entry to expand the full Q&A</div>
+            </div>
+            <FeedbackPanel />
+          </div>
+        )}
+
         {/* Session table */}
-        <div style={{ background: '#fff', border: '1px solid #EBEBEA', borderRadius: 16, overflow: 'hidden' }}>
+        {tab === 'sessions' && <div style={{ background: '#fff', border: '1px solid #EBEBEA', borderRadius: 16, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #EBEBEA', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A18' }}>
               Sessions
@@ -325,6 +413,8 @@ export default function AdminPage() {
             />
           ))}
         </div>
+
+        }
 
         {/* Quick links */}
         <div style={{ marginTop: 24, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
