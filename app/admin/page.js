@@ -234,14 +234,14 @@ function FeedbackPanel() {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px 24px' }}>
       {feedback.map((entry, i) => {
         const isLeader = entry.persona === 'leader';
         const color = isLeader ? '#534AB7' : '#1D9E75';
         const bg = isLeader ? '#F0EFFE' : '#E6F7F0';
         const isOpen = expanded === i;
         return (
-          <div key={i} style={{ border: '1px solid #EBEBEA', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+          <div key={i} style={{ border: '1px solid #EBEBEA', borderRadius: 12, background: '#fff' }}>
             <div onClick={() => setExpanded(isOpen ? null : i)}
               style={{ padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: isOpen ? '#FAFAF8' : '#fff', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 11, fontWeight: 600, color, background: bg, padding: '2px 8px', borderRadius: 20, flexShrink: 0 }}>{entry.persona}</span>
