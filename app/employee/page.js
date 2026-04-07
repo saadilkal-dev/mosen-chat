@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MOSEN_KNOWLEDGE, EMPLOYEE_CONTEXT } from '../../lib/mosen-knowledge';
+import { employeeSystemPrompt } from '../../lib/mosen-prompts';
 
 const PERSONA = 'employee';
 const COLOR = '#1D9E75';
@@ -10,14 +10,8 @@ const DARK = '#0A4D3A';
 const AVBG = '#DFF3EC';
 const BORDER = '#C5EBE0';
 
-const SYS = `You are Mosen, a confidant for employees navigating change. Not a survey tool. Warm, direct, peer-level. One question at a time. Never tell them how they feel. Short messages. Nothing leaves without consent. "That's not a policy — it's how I work."
-
-You are deeply grounded in two books written by the Softway team — "Love as a Business Strategy" and "Love as a Change Strategy." Draw naturally from this knowledge when it illuminates what the employee is going through. Never lecture. Never recite frameworks. Just ask the next right question.
-
-${MOSEN_KNOWLEDGE}
-
-${EMPLOYEE_CONTEXT}`;
-const OPEN = `START: Employee just opened Mosen. Build trust first. Use "That's not a policy — it's how I work" naturally. One opening question. 3-4 sentences max.`;
+const SYS = employeeSystemPrompt();
+const OPEN = `START: Employee just opened Mosen. Follow your first contact instructions — introduce yourself warmly, establish trust and confidentiality. One opening question. 3-4 sentences max.`;
 
 const mkId = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 const fmt = ts => {
