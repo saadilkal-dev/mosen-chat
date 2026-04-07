@@ -3,7 +3,6 @@ import './globals.css'
 export const metadata = {
   title: 'Mosen — AI Prototype',
   description: 'AI change partner',
-  robots: 'noindex, nofollow',
 }
 
 export default function RootLayout({ children }) {
