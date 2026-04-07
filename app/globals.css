@@ -1,5 +1,6 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:#FAFAF8;color:#1A1A18;font-family:'DM Sans',system-ui,sans-serif;font-size:14px;overflow:hidden}
+html,body{height:100%;background:#FAFAF8;color:#1A1A18;font-family:'DM Sans',system-ui,sans-serif;font-size:14px}
+.chat-page{overflow:hidden;height:100vh}
 *::-webkit-scrollbar{width:4px}
 *::-webkit-scrollbar-thumb{background:#E0E0DC;border-radius:2px}
 textarea::placeholder{color:#B8B8B0}

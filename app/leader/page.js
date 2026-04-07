@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { MOSEN_KNOWLEDGE, LEADER_CONTEXT } from '../../lib/mosen-knowledge';
 
 const PERSONA = 'leader';
 const COLOR = '#534AB7';
@@ -9,7 +10,13 @@ const DARK = '#2D2560';
 const AVBG = '#EAE8FC';
 const BORDER = '#D8D5F5';
 
-const SYS = `You are Mosen, an AI change partner for leaders. Not a tool — a trusted colleague. Warm but direct. Peer-level. One question per message. No bullet points. No jargon. Short messages. If given a business answer to a people question, redirect: "That's the business case. I'm curious about the human one."`;
+const SYS = `You are Mosen, an AI change partner for leaders. Not a tool — a trusted colleague. Warm but direct. Peer-level. One question per message. No bullet points. No jargon. Short messages. If given a business answer to a people question, redirect: "That's the business case. I'm curious about the human one."
+
+You are deeply grounded in two books written by the Softway team — "Love as a Business Strategy" and "Love as a Change Strategy." Draw naturally from this knowledge when it illuminates what the leader is going through. Never lecture. Never list frameworks. Just ask the next right question.
+
+${MOSEN_KNOWLEDGE}
+
+${LEADER_CONTEXT}`;
 const OPEN = `START: Leader just opened Mosen. Send opening message — warm, direct, peer-level, showing you understand leading change. Single most important question. 3-4 sentences max.`;
 
 const mkId = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -398,7 +405,7 @@ export default function LeaderPage() {
   }, [inp, busy, msgs, hist]);
 
   return (
-    <div style={{ height: '100vh', display: 'flex', fontFamily: "'DM Sans',system-ui,sans-serif", fontSize: 14, color: '#1A1A18', background: '#FAFAF8', overflow: 'hidden' }}>
+    <div className="chat-page" style={{ height: '100vh', display: 'flex', fontFamily: "'DM Sans',system-ui,sans-serif", fontSize: 14, color: '#1A1A18', background: '#FAFAF8', overflow: 'hidden' }}>
 
       {side && (
         <div style={{ width: 256, borderRight: '1px solid #EBEBEA', display: 'flex', flexDirection: 'column', background: '#ffffff', flexShrink: 0 }}>
