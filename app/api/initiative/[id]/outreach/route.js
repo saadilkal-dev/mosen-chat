@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
-import { getInitiativeRow, getOutreachMessages, setOutreachMessages, getAssignedEmails } from '@/lib/leader-store'
-import { getSupabase } from '@/lib/supabase'
+import { getInitiativeRow, getOutreachMessages, setOutreachMessages, getOrgRoster } from '@/lib/leader-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,17 +42,10 @@ export async function PUT(req, { params }) {
 
     if (approved) {
       try {
-        const employees = await getAssignedEmails(id)
+        const roster = await getOrgRoster(init.org_id)
         const baseUrl = req.nextUrl?.origin || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'
-        const supabase = getSupabase()
-        for (const empEmail of employees || []) {
-          const { data: empRow } = await supabase
-            .from('org_employees')
-            .select('invite_token, name')
-            .eq('org_id', init.org_id)
-            .eq('email', empEmail)
-            .maybeSingle()
-          const chatUrl = empRow?.invite_token
+        for (const empRow of roster || []) {
+          const chatUrl = empRow.invite_token
             ? `${baseUrl}/initiative/${id}/employee?token=${encodeURIComponent(empRow.invite_token)}`
             : `${baseUrl}/initiative/${id}/employee`
           await fetch(`${baseUrl}/api/email/send`, {
@@ -61,9 +53,9 @@ export async function PUT(req, { params }) {
             headers: { 'Content-Type': 'application/json', Cookie: req.headers.get('cookie') || '' },
             body: JSON.stringify({
               type: 'outreach',
-              to: empEmail,
+              to: empRow.email,
               data: {
-                employeeName: empRow?.name || empEmail.split('@')[0],
+                employeeName: empRow.name || empRow.email.split('@')[0],
                 initiativeTitle: init.title,
                 message: messages[msgIndex].draft,
                 chatUrl,
