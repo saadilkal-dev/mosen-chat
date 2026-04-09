@@ -29,6 +29,12 @@ export default function PlaybookCard({ versions = [], activeVersion: controlledV
         )}
       </div>
 
+      {current.changeSummary && (
+        <div style={{ fontSize: 13, color: '#666', lineHeight: 1.6, marginBottom: 16, padding: '10px 14px', background: '#F6F5FF', borderRadius: 8, border: '1px solid #D8D5F5' }}>
+          {current.changeSummary}
+        </div>
+      )}
+
       {(current.phases || []).map((phase, i) => (
         <div key={i} style={{ marginBottom: 12, border: '1px solid #EBEBEA', borderRadius: 12, overflow: 'hidden' }}>
           <button
@@ -64,6 +70,20 @@ export default function PlaybookCard({ versions = [], activeVersion: controlledV
           )}
         </div>
       ))}
+
+      {(!current.phases || current.phases.length === 0) && Array.isArray(current.recommendations) && (
+        <div style={{ padding: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A18', marginBottom: 10 }}>Recommended Changes</div>
+          {current.summary && <div style={{ fontSize: 13, color: '#666', lineHeight: 1.6, marginBottom: 14 }}>{current.summary}</div>}
+          {current.recommendations.map((rec, i) => (
+            <div key={i} style={{ marginBottom: 10, padding: '10px 14px', background: '#F6F5FF', borderRadius: 10, border: '1px solid #D8D5F5' }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: '#1A1A18', marginBottom: 4 }}>{rec.theme || rec.pillar}</div>
+              <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5 }}>{rec.change}</div>
+              {rec.rationale && <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>{rec.rationale}</div>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
