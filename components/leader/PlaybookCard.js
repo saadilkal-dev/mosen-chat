@@ -11,9 +11,13 @@ export default function PlaybookCard({ versions = [], activeVersion: controlledV
 
   const togglePhase = (idx) => setExpandedPhases(prev => ({ ...prev, [idx]: !prev[idx] }))
 
+  const phases = current.phases || []
+  const totalActivities = phases.reduce((s, p) => s + (p.activities || []).length, 0)
+  const totalArtifacts = phases.reduce((s, p) => s + (p.activities || []).reduce((a2, act) => a2 + (act.artifacts || []).length, 0), 0)
+
   return (
     <div style={{ padding: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1A18' }}>Playbook</span>
           <select
@@ -25,9 +29,33 @@ export default function PlaybookCard({ versions = [], activeVersion: controlledV
           </select>
         </div>
         {current.changeNote && (
-          <span style={{ fontSize: 11, color: '#999', fontStyle: 'italic' }}>{current.changeNote}</span>
+          <span style={{ fontSize: 11, color: '#999', fontStyle: 'italic', maxWidth: '50%', textAlign: 'right' }}>{current.changeNote}</span>
         )}
       </div>
+
+      {phases.length > 0 && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+          <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1px solid #EBEBEA', fontSize: 12 }}>
+            <span style={{ fontWeight: 600, color: '#534AB7' }}>{phases.length}</span>
+            <span style={{ color: '#999', marginLeft: 4 }}>phase{phases.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1px solid #EBEBEA', fontSize: 12 }}>
+            <span style={{ fontWeight: 600, color: '#534AB7' }}>{totalActivities}</span>
+            <span style={{ color: '#999', marginLeft: 4 }}>activit{totalActivities !== 1 ? 'ies' : 'y'}</span>
+          </div>
+          {totalArtifacts > 0 && (
+            <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1px solid #EBEBEA', fontSize: 12 }}>
+              <span style={{ fontWeight: 600, color: '#534AB7' }}>{totalArtifacts}</span>
+              <span style={{ color: '#999', marginLeft: 4 }}>artifact{totalArtifacts !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+          {current.createdAt && (
+            <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1px solid #EBEBEA', fontSize: 11, color: '#999' }}>
+              {new Date(current.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </div>
+          )}
+        </div>
+      )}
 
       {current.changeSummary && (
         <div style={{ fontSize: 13, color: '#666', lineHeight: 1.6, marginBottom: 16, padding: '10px 14px', background: '#F6F5FF', borderRadius: 8, border: '1px solid #D8D5F5' }}>

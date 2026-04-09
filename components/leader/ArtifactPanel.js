@@ -62,8 +62,28 @@ export default function ArtifactPanel({ initId, activeTab: controlledTab, onTabC
       case 'Brief': {
         const brief = data.brief
         if (!brief?.content) return renderEmptyState('Brief')
+        const words = (brief.content || '').split(/\s+/).filter(Boolean).length
+        const readMins = Math.max(1, Math.round(words / 200))
         return (
           <div style={{ padding: 20 }}>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1px solid #EBEBEA', fontSize: 12 }}>
+                <span style={{ fontWeight: 600, color: '#534AB7' }}>{words}</span>
+                <span style={{ color: '#999', marginLeft: 4 }}>words</span>
+              </div>
+              <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1px solid #EBEBEA', fontSize: 12 }}>
+                <span style={{ fontWeight: 600, color: '#534AB7' }}>{readMins} min</span>
+                <span style={{ color: '#999', marginLeft: 4 }}>read</span>
+              </div>
+              <div style={{
+                padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 500,
+                background: brief.approved ? '#F0FAF6' : '#FFFBF0',
+                color: brief.approved ? '#1D9E75' : '#F39C12',
+                border: `1px solid ${brief.approved ? '#C5EBE0' : '#F5E6C8'}`,
+              }}>
+                {brief.approved ? 'Approved & Sent' : 'Pending Approval'}
+              </div>
+            </div>
             <div style={{ background: '#F6F5FF', border: '1px solid #D8D5F5', borderRadius: 12, padding: 20 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#534AB7', marginBottom: 12 }}>Employee Brief</div>
               <div style={{ fontSize: 14, color: '#1A1A18', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{brief.content}</div>

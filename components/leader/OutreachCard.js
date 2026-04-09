@@ -28,8 +28,30 @@ export default function OutreachCard({ outreachList = [], initId, onRefresh }) {
     } catch (err) { console.error('Edit failed:', err) }
   }
 
+  const totalMessages = outreachList.length
+  const sentCount = outreachList.filter(m => m.status === 'approved').length
+  const pendingCount = totalMessages - sentCount
+
   return (
     <div style={{ padding: 20 }}>
+      {totalMessages > 0 && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1px solid #EBEBEA', fontSize: 12 }}>
+            <span style={{ fontWeight: 600, color: '#534AB7' }}>{totalMessages}</span>
+            <span style={{ color: '#999', marginLeft: 4 }}>total</span>
+          </div>
+          <div style={{ padding: '8px 14px', borderRadius: 10, background: '#F0FAF6', border: '1px solid #C5EBE0', fontSize: 12 }}>
+            <span style={{ fontWeight: 600, color: '#1D9E75' }}>{sentCount}</span>
+            <span style={{ color: '#1D9E75', marginLeft: 4 }}>sent</span>
+          </div>
+          {pendingCount > 0 && (
+            <div style={{ padding: '8px 14px', borderRadius: 10, background: '#FFFBF0', border: '1px solid #F5E6C8', fontSize: 12 }}>
+              <span style={{ fontWeight: 600, color: '#F97316' }}>{pendingCount}</span>
+              <span style={{ color: '#F97316', marginLeft: 4 }}>pending</span>
+            </div>
+          )}
+        </div>
+      )}
       {outreachList.map((msg) => (
         <div key={msg.id} style={{ marginBottom: 16, padding: 16, border: '1px solid #EBEBEA', borderRadius: 12, background: '#fff' }}>
           {msg.status === 'approved' ? (
