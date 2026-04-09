@@ -1,29 +1,71 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import PlaybookCard from './PlaybookCard'
 import SynthesisCard from './SynthesisCard'
 import OutreachCard from './OutreachCard'
 
 const TABS = ['Brief', 'Playbook', 'Outreach', 'Synthesis']
 
+// Tabs that can get AI-generated content notifications
+const NOTIFIABLE_TABS = ['Playbook', 'Outreach', 'Synthesis']
+
 export default function ArtifactPanel({ initId, activeTab: controlledTab, onTabChange }) {
   const [internalTab, setInternalTab] = useState('Brief')
   const [data, setData] = useState({ brief: null, playbook: [], outreach: [], synthesis: [] })
   const [loading, setLoading] = useState(false)
 
+  // Tracks which tabs have been opened this session
+  const [seen, setSeen] = useState(() => new Set(['Brief']))
+  // Tracks which tabs have AI-generated content ready
+  const [hasContent, setHasContent] = useState({})
+  const backgroundChecked = useRef(false)
+
   const activeTab = controlledTab || internalTab
-  const setTab = (t) => { if (onTabChange) onTabChange(t); else setInternalTab(t) }
+
+  function setTab(t) {
+    setSeen(prev => new Set([...prev, t]))
+    if (onTabChange) onTabChange(t)
+    else setInternalTab(t)
+  }
+
+  // Mark active tab as seen whenever it changes
+  useEffect(() => {
+    setSeen(prev => new Set([...prev, activeTab]))
+  }, [activeTab])
 
   useEffect(() => {
     if (!initId) return
     loadTabData(activeTab)
   }, [activeTab, initId])
 
+  // Background check: silently poll notifiable tabs for content
+  useEffect(() => {
+    if (!initId || backgroundChecked.current) return
+    backgroundChecked.current = true
+
+    NOTIFIABLE_TABS.forEach(async (tab) => {
+      try {
+        const res = await fetch(`/api/initiative/${initId}/${tab.toLowerCase()}`, { credentials: 'include' })
+        if (!res.ok) return
+        const json = await res.json()
+        const val = json[Object.keys(json)[0]] ?? json
+        const populated = Array.isArray(val) ? val.length > 0 : (val && typeof val === 'object' && Object.keys(val).length > 0)
+        if (populated) {
+          setHasContent(prev => ({ ...prev, [tab]: true }))
+          // Also cache the data so clicking is instant
+          setData(prev => ({ ...prev, [tab.toLowerCase()]: val }))
+        }
+      } catch {
+        // silent — this is a background notification check
+      }
+    })
+  }, [initId])
+
   async function loadTabData(tab) {
     setLoading(true)
     try {
       const endpoint = tab.toLowerCase()
-      const res = await fetch(`/api/initiative/${initId}/${endpoint}`)
+      const res = await fetch(`/api/initiative/${initId}/${endpoint}`, { credentials: 'include' })
       if (res.ok) {
         const json = await res.json()
         setData(prev => ({ ...prev, [tab.toLowerCase()]: json[Object.keys(json)[0]] || json }))
@@ -51,11 +93,13 @@ export default function ArtifactPanel({ initId, activeTab: controlledTab, onTabC
 
   function renderContent() {
     if (loading) {
-      return <div style={{ padding: 32, textAlign: 'center', color: '#999' }}>
-        <div style={{ width: 24, height: 24, border: '2px solid #D8D5F5', borderTopColor: '#534AB7', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
-        Loading...
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-      </div>
+      return (
+        <div style={{ padding: 32, textAlign: 'center', color: '#999' }}>
+          <div style={{ width: 24, height: 24, border: '2px solid #D8D5F5', borderTopColor: '#534AB7', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          Loading...
+          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        </div>
+      )
     }
 
     switch (activeTab) {
@@ -111,24 +155,52 @@ export default function ArtifactPanel({ initId, activeTab: controlledTab, onTabC
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#FAFAF8' }}>
       <div style={{ display: 'flex', borderBottom: '1px solid #EBEBEA', padding: '0 16px', flexShrink: 0 }}>
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setTab(tab)}
-            style={{
-              padding: '12px 16px', fontSize: 13, fontWeight: activeTab === tab ? 600 : 400,
-              color: activeTab === tab ? '#534AB7' : '#999', background: 'none', border: 'none',
-              borderBottom: activeTab === tab ? '2px solid #534AB7' : '2px solid transparent',
-              cursor: 'pointer', transition: 'all 0.2s'
-            }}
-          >
-            {tab}
-          </button>
-        ))}
+        {TABS.map(tab => {
+          const isActive = activeTab === tab
+          const isNew = hasContent[tab] && !seen.has(tab)
+
+          return (
+            <button
+              key={tab}
+              onClick={() => setTab(tab)}
+              style={{
+                padding: '12px 16px',
+                fontSize: 13,
+                fontWeight: isActive || isNew ? 600 : 400,
+                background: 'none',
+                border: 'none',
+                borderBottom: isActive ? '2px solid #534AB7' : '2px solid transparent',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                position: 'relative',
+                // Reset color so gradient can show through
+                color: isNew ? 'transparent' : isActive ? '#534AB7' : '#999',
+                ...(isNew ? {
+                  backgroundImage: 'linear-gradient(90deg, #7C3AED, #3B82F6, #A855F7, #EC4899, #7C3AED)',
+                  backgroundSize: '250% auto',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  animation: 'aiShimmer 2.4s linear infinite',
+                } : {}),
+              }}
+            >
+              {tab}
+            </button>
+          )
+        })}
       </div>
+
       <div style={{ flex: 1, overflow: 'auto' }}>
         {renderContent()}
       </div>
+
+      <style>{`
+        @keyframes aiShimmer {
+          0%   { background-position: 0% center; }
+          100% { background-position: 250% center; }
+        }
+      `}</style>
     </div>
   )
 }
