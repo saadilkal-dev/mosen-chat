@@ -1,0 +1,33 @@
+import { NextResponse } from 'next/server'
+import { getInviteByToken, getInitiative, getBrief } from '@/lib/initiative-store'
+
+export async function GET(req, { params }) {
+  const { id: initId } = params
+  const { searchParams } = new URL(req.url)
+  const token = searchParams.get('token')
+
+  if (!token) {
+    return NextResponse.json({ error: 'Token required' }, { status: 401 })
+  }
+
+  const invite = await getInviteByToken(token)
+  if (!invite || !invite.orgId) {
+    return NextResponse.json({ error: 'Invalid or expired invite' }, { status: 401 })
+  }
+
+  const initiative = await getInitiative(initId)
+  if (!initiative) {
+    return NextResponse.json({ error: 'Initiative not found' }, { status: 404 })
+  }
+
+  const brief = await getBrief(initId)
+
+  return NextResponse.json({
+    employeeName: invite.name || '',
+    brief:
+      brief?.approved && brief.content != null
+        ? { content: brief.content, initiativeTitle: initiative.title }
+        : null,
+    initiativeTitle: initiative.title || '',
+  })
+}
