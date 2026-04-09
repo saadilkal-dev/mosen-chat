@@ -65,6 +65,7 @@ export default function OnboardingPage() {
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
+            skipInvites: true,
             employees: employees.map(({ name, email, department, role }) => ({
               name,
               email,
@@ -123,10 +124,9 @@ export default function OnboardingPage() {
             Set up your workspace
           </h1>
           <p style={{ fontSize: 14, color: THEME.colors.textMuted, marginBottom: 24, lineHeight: 1.55 }}>
-            Add your organisation, then upload your team list. We need <strong>first name</strong>,{' '}
-            <strong>last name</strong>, and <strong>email</strong> per row (
-            <code style={{ fontSize: 12 }}>first_name</code>, <code style={{ fontSize: 12 }}>last_name</code>,{' '}
-            <code style={{ fontSize: 12 }}>email_address</code> in the template).
+            <strong>Organisation name</strong> is required to continue. Adding people is optional — you can skip step 2
+            and add them later from <strong>Team</strong> in the sidebar. If you upload a roster here, we save names
+            and emails only; <strong>no invitations are sent</strong> at this step.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
@@ -163,7 +163,7 @@ export default function OnboardingPage() {
                   margin: '0 0 10px',
                 }}
               >
-                Step 2 — Team roster
+                Step 2 — Team roster (optional)
               </p>
               <TeamRosterField
                 inputId="onboarding-roster-file"
@@ -186,11 +186,11 @@ export default function OnboardingPage() {
                 disabled={!canSubmit}
                 onClick={() => completeSetup(employees.length > 0)}
               >
-                {employees.length > 0 ? 'Complete setup & import team' : 'Complete setup'}
+                {employees.length > 0 ? 'Complete setup & save team list' : 'Complete setup'}
               </Button>
               <p style={{ fontSize: 12, color: THEME.colors.textMuted, margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
                 {employees.length > 0
-                  ? 'Imports your organisation and team. You can add more people later from Team in the sidebar.'
+                  ? 'Saves your organisation and team list (no invites sent). You can add more people later from Team in the sidebar.'
                   : 'Saves your organisation. You can add people anytime from Team in the sidebar (quick add or bulk import).'}
               </p>
             </div>

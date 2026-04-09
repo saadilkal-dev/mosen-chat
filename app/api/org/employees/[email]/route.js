@@ -45,8 +45,10 @@ export async function DELETE(_req, context) {
       if (asgErr) throw asgErr
     }
 
-    const { error: invErr } = await supabase.from('invites').delete().eq('token', row.invite_token)
-    if (invErr) throw invErr
+    if (row.invite_token) {
+      const { error: invErr } = await supabase.from('invites').delete().eq('token', row.invite_token)
+      if (invErr) throw invErr
+    }
 
     const { error: delErr } = await supabase.from('org_employees').delete().eq('id', row.id)
     if (delErr) throw delErr

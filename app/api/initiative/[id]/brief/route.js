@@ -2,8 +2,14 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { getSupabase } from '@/lib/supabase'
 import { getInitiativeRow, getAssignedEmails, getEmployeeInviteUrl, briefContentToString } from '@/lib/leader-store'
+import { sendEmail, buildInviteEmail } from '@/lib/email'
+import { logEmailSend } from '@/lib/initiative-store'
 
 export const dynamic = 'force-dynamic'
+
+function mkLogId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`
+}
 
 export async function GET(req, { params }) {
   try {
@@ -60,33 +66,31 @@ export async function PUT(req, { params }) {
     if (approved === true) {
       const employees = await getAssignedEmails(id)
       const baseUrl = req.nextUrl?.origin || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'
-      if (employees.length > 0) {
+      for (const empEmail of employees) {
         try {
-          for (const empEmail of employees) {
-            const inviteUrl = await getEmployeeInviteUrl(init.org_id, empEmail, id, baseUrl)
-            const { data: empRow } = await supabase
-              .from('org_employees')
-              .select('name')
-              .eq('org_id', init.org_id)
-              .eq('email', empEmail)
-              .maybeSingle()
-            const employeeName = empRow?.name || empEmail.split('@')[0]
-            await fetch(`${baseUrl}/api/email/send`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Cookie: req.headers.get('cookie') || '' },
-              body: JSON.stringify({
-                type: 'invite',
-                to: empEmail,
-                data: {
-                  employeeName,
-                  initiativeTitle: init.title,
-                  inviteUrl,
-                },
-              }),
-            })
-          }
+          const inviteUrl = await getEmployeeInviteUrl(init.org_id, empEmail, id, baseUrl)
+          const { data: empRow } = await supabase
+            .from('org_employees')
+            .select('name')
+            .eq('org_id', init.org_id)
+            .eq('email', empEmail)
+            .maybeSingle()
+          const employeeName = empRow?.name || empEmail.split('@')[0]
+          const emailPayload = buildInviteEmail({
+            employeeName,
+            initiativeTitle: init.title,
+            inviteUrl,
+          })
+          const result = await sendEmail({ to: empEmail, ...emailPayload })
+          await logEmailSend({
+            id: mkLogId(),
+            type: 'invite',
+            to: empEmail,
+            subject: emailPayload.subject,
+            providerId: result?.id || '',
+          })
         } catch (emailErr) {
-          console.warn('Invite email send failed:', emailErr.message)
+          console.error(`Invite email failed for ${empEmail}:`, emailErr)
         }
       }
     }

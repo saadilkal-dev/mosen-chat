@@ -104,17 +104,6 @@ export default function Home() {
           </Link>
         </div>
       </Card>
-
-      <p style={{ marginTop: 28, fontSize: 13, color: THEME.colors.textMuted, textAlign: 'center' }}>
-        Trying the original prototype?{' '}
-        <a href="/leader" style={{ color: THEME.colors.leader.primary, fontWeight: 600 }}>
-          Leader
-        </a>
-        {' · '}
-        <a href="/employee" style={{ color: THEME.colors.employee.primary, fontWeight: 600 }}>
-          Employee
-        </a>
-      </p>
     </div>
   )
 }
