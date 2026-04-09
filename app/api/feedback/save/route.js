@@ -1,36 +1,31 @@
-import { Redis } from '@upstash/redis';
+import { getSupabase } from '../../../../lib/supabase'
 
-const redis = Redis.fromEnv();
+export const dynamic = 'force-dynamic'
 
-export const dynamic = 'force-dynamic';
-
-// POST /api/feedback/save
-// Body: { browserId, persona, chatId, responses: [{question, answer, questionNumber}] }
 export async function POST(req) {
   try {
-    const { browserId, persona, chatId, responses } = await req.json();
+    const { browserId, persona, chatId, responses } = await req.json()
     if (!browserId || !persona || !responses) {
-      return Response.json({ ok: false }, { status: 400 });
+      return Response.json({ ok: false }, { status: 400 })
     }
 
-    const entry = {
-      browserId,
+    const feedbackId = `${persona}:${browserId}:${Date.now()}`
+    const supabase = getSupabase()
+
+    const { error } = await supabase.from('feedback_submissions').insert({
+      id: feedbackId,
+      browser_id: browserId,
       persona,
-      chatId: chatId || null,
+      chat_id: chatId || null,
       responses,
-      submittedAt: Date.now(),
-    };
+      submitted_at_ms: Date.now(),
+    })
 
-    // Save individual feedback entry
-    const feedbackId = `${persona}:${browserId}:${Date.now()}`;
-    await redis.set(`feedback:${feedbackId}`, entry, { ex: 60 * 60 * 24 * 180 });
+    if (error) throw error
 
-    // Add to global feedback index (sorted set)
-    await redis.zadd('admin:feedback', { score: Date.now(), member: feedbackId });
-
-    return Response.json({ ok: true });
+    return Response.json({ ok: true })
   } catch (err) {
-    console.error('Feedback save error:', err.message);
-    return Response.json({ ok: false, error: err.message }, { status: 500 });
+    console.error('Feedback save error:', err.message)
+    return Response.json({ ok: false, error: err.message }, { status: 500 })
   }
 }

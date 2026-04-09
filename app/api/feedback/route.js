@@ -1,7 +1,3 @@
-import { Redis } from '@upstash/redis';
-
-const redis = Redis.fromEnv();
-
 export const dynamic = 'force-dynamic';
 
 // Seed prompts for each persona — grounded in Mosen's research goals

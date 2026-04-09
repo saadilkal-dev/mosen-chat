@@ -1,38 +1,35 @@
-import { Redis } from '@upstash/redis';
+import { getSupabase } from '../../../lib/supabase'
 
-const redis = Redis.fromEnv();
+export const dynamic = 'force-dynamic'
 
-export const dynamic = 'force-dynamic';
-
-// GET /api/admin
-// Returns all sessions for the admin dashboard, grouped by persona
 export async function GET() {
   try {
-    // Get all members from the admin index, sorted by most recent activity
-    const members = await redis.zrange('admin:sessions', 0, -1, { rev: true });
+    const supabase = getSupabase()
+    const { data: rows, error } = await supabase
+      .from('admin_session_previews')
+      .select('*')
+      .order('last_activity_ms', { ascending: false })
 
-    if (!members || members.length === 0) {
-      return Response.json({ leader: [], employee: [] });
+    if (error) throw error
+    if (!rows?.length) {
+      return Response.json({ leader: [], employee: [], total: 0 })
     }
 
-    // Fetch preview data for each session
-    const previews = await Promise.all(
-      members.map(async (member) => {
-        const [persona, ...rest] = member.split(':');
-        const browserId = rest.join(':');
-        const previewKey = `admin:preview:${persona}:${browserId}`;
-        const data = await redis.get(previewKey);
-        return data ? { ...data, persona, browserId } : null;
-      })
-    );
+    const valid = rows.map(row => ({
+      persona: row.persona,
+      browserId: row.browser_id,
+      chatCount: row.chat_count,
+      messageCount: row.message_count,
+      lastActivity: row.last_activity_ms,
+      lastPreview: row.last_preview,
+    }))
 
-    const valid = previews.filter(Boolean);
-    const leader = valid.filter(s => s.persona === 'leader');
-    const employee = valid.filter(s => s.persona === 'employee');
+    const leader = valid.filter(s => s.persona === 'leader')
+    const employee = valid.filter(s => s.persona === 'employee')
 
-    return Response.json({ leader, employee, total: valid.length });
+    return Response.json({ leader, employee, total: valid.length })
   } catch (err) {
-    console.error('Admin GET error:', err.message);
-    return Response.json({ leader: [], employee: [], total: 0 });
+    console.error('Admin GET error:', err.message)
+    return Response.json({ leader: [], employee: [], total: 0 })
   }
 }

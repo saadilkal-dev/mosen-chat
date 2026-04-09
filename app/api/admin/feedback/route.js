@@ -1,27 +1,28 @@
-import { Redis } from '@upstash/redis';
+import { getSupabase } from '../../../../lib/supabase'
 
-const redis = Redis.fromEnv();
+export const dynamic = 'force-dynamic'
 
-export const dynamic = 'force-dynamic';
-
-// GET /api/admin/feedback
-// Returns all feedback submissions for admin dashboard
 export async function GET() {
   try {
-    const ids = await redis.zrange('admin:feedback', 0, -1, { rev: true });
+    const supabase = getSupabase()
+    const { data: rows, error } = await supabase
+      .from('feedback_submissions')
+      .select('*')
+      .order('submitted_at_ms', { ascending: false })
 
-    if (!ids || ids.length === 0) {
-      return Response.json({ feedback: [], total: 0 });
-    }
+    if (error) throw error
 
-    const entries = await Promise.all(
-      ids.map(id => redis.get(`feedback:${id}`))
-    );
+    const feedback = (rows || []).map(row => ({
+      browserId: row.browser_id,
+      persona: row.persona,
+      chatId: row.chat_id,
+      responses: row.responses,
+      submittedAt: row.submitted_at_ms,
+    }))
 
-    const feedback = entries.filter(Boolean);
-    return Response.json({ feedback, total: feedback.length });
+    return Response.json({ feedback, total: feedback.length })
   } catch (err) {
-    console.error('Admin feedback GET error:', err.message);
-    return Response.json({ feedback: [], total: 0 });
+    console.error('Admin feedback GET error:', err.message)
+    return Response.json({ feedback: [], total: 0 })
   }
 }
