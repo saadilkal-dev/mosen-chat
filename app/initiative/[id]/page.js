@@ -27,18 +27,29 @@ export default function InitiativePage() {
 
   async function loadInitiative() {
     try {
-      const res = await fetch(`/api/initiative/${id}`)
-      if (!res.ok) throw new Error('Failed to load initiative')
-      const data = await res.json()
-      setInitiative(data.initiative)
+      const [initRes, chatRes] = await Promise.all([
+        fetch(`/api/initiative/${id}`, { credentials: 'include' }),
+        fetch(`/api/initiative/${id}/chat`, { credentials: 'include' }),
+      ])
 
-      // Add welcome message
-      if (messages.length === 0) {
-        const briefComplete = data.initiative?.briefComplete === 'true'
+      if (!initRes.ok) throw new Error('Failed to load initiative')
+      const initData = await initRes.json()
+      setInitiative(initData.initiative)
+
+      const chatData = chatRes.ok ? await chatRes.json().catch(() => ({})) : {}
+      const saved = Array.isArray(chatData.messages) ? chatData.messages : []
+
+      if (saved.length > 0) {
+        setMessages(saved.map(m => ({
+          from: m.from === 'leader' ? 'user' : 'mosen',
+          text: m.text,
+        })))
+      } else {
+        const briefComplete = initData.initiative?.briefComplete === 'true'
         setMessages([{
           from: 'mosen',
           text: briefComplete
-            ? `Welcome back. Let's continue working on "${data.initiative?.title || 'your initiative'}". What's on your mind?`
+            ? `Welcome back. Let's continue working on "${initData.initiative?.title || 'your initiative'}". What's on your mind?`
             : `Let's build a clear picture of this change together. I'll ask you a few questions — one at a time — to understand what's really happening, why, and who it affects. Ready to start?`
         }])
       }

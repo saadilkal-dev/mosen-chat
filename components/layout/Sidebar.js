@@ -11,6 +11,8 @@ export default function Sidebar({
   activeId,
   onSelect,
   onNew,
+  onTeam,
+  teamCount = 0,
   onLogout,
 }) {
   return (
@@ -112,6 +114,46 @@ export default function Sidebar({
           </button>
         ))}
       </div>
+
+      {typeof onTeam === 'function' && (
+        <button
+          type="button"
+          onClick={onTeam}
+          style={{
+            padding: '10px 14px',
+            background: 'transparent',
+            color: THEME.colors.text,
+            border: `1px solid ${THEME.colors.border}`,
+            borderRadius: THEME.radius.md,
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: THEME.font,
+            cursor: 'pointer',
+            textAlign: 'left',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            marginTop: 8,
+          }}
+        >
+          <span>Team</span>
+          {teamCount > 0 && (
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: THEME.colors.leader.primary,
+                background: THEME.colors.leader.light,
+                padding: '2px 8px',
+                borderRadius: THEME.radius.pill,
+              }}
+            >
+              {teamCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Logout */}
       {onLogout && (
