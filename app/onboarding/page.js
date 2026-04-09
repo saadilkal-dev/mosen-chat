@@ -177,6 +177,12 @@ export default function OnboardingPage() {
       }}
     >
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <a href="/emp" style={{ fontSize: 13, color: '#999', textDecoration: 'none' }}>
+            I'm an employee, not a leader →
+          </a>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 28 }}>
           {STEPS.map((label, i) => (
             <div

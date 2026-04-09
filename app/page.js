@@ -103,6 +103,17 @@ export default function Home() {
             </Button>
           </Link>
         </div>
+
+        <div style={{ marginTop: 20, paddingTop: 20, borderTop: `1px solid ${THEME.colors.border}`, textAlign: 'center' }}>
+          <p style={{ fontSize: 12, color: THEME.colors.textMuted, marginBottom: 10 }}>
+            Received an invite from your leader?
+          </p>
+          <Link href="/sign-in?redirect_url=/emp" style={{ textDecoration: 'none' }}>
+            <Button fullWidth variant="secondary" style={{ borderColor: THEME.colors.employee.border, color: THEME.colors.employee.primary }}>
+              Access employee portal
+            </Button>
+          </Link>
+        </div>
       </Card>
 
       <p style={{ marginTop: 28, fontSize: 13, color: THEME.colors.textMuted, textAlign: 'center' }}>
