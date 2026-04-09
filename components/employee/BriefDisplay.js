@@ -41,7 +41,8 @@ export default function BriefDisplay({ brief, initiativeTitle }) {
   }
 
   // ── Brief available ───────────────────────────────────────────────────────
-  const paragraphs = brief.content
+  const text = typeof brief.content === 'string' ? brief.content : (brief.content?.body || '')
+  const paragraphs = text
     .split('\n')
     .map(p => p.trim())
     .filter(Boolean)

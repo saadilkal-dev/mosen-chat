@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getInviteByToken, getInitiative, getBrief } from '@/lib/initiative-store'
+import { briefContentToString } from '@/lib/leader-store'
 
 export async function GET(req, { params }) {
   const { id: initId } = params
@@ -26,7 +27,7 @@ export async function GET(req, { params }) {
     employeeName: invite.name || '',
     brief:
       brief?.approved && brief.content != null
-        ? { content: brief.content, initiativeTitle: initiative.title }
+        ? { content: briefContentToString(brief.content), initiativeTitle: initiative.title }
         : null,
     initiativeTitle: initiative.title || '',
   })
