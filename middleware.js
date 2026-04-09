@@ -7,9 +7,9 @@ const isProtectedPage = createRouteMatcher([
   '/admin(.*)',
 ])
 
-export default clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware(async (getAuth, req) => {
   if (!isProtectedPage(req)) return
-  await auth.protect()
+  await getAuth().protect()
 })
 
 export const config = {
