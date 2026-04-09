@@ -14,7 +14,7 @@ const STEPS = ['Organisation', 'Team roster', 'Invite']
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, refresh } = useAuth()
   const [step, setStep] = useState(0)
   const [orgName, setOrgName] = useState('')
   const [employees, setEmployees] = useState([])
@@ -123,7 +123,18 @@ export default function OnboardingPage() {
   }
 
   async function finish() {
-    router.push('/dashboard')
+    setLoading(true)
+    setError('')
+    try {
+      const profile = await refresh()
+      if (!profile?.orgId) {
+        setError('Could not load your workspace. Refresh the page and try again.')
+        return
+      }
+      router.push('/dashboard')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (authLoading || !user || user.orgId) {
@@ -300,7 +311,10 @@ export default function OnboardingPage() {
             <p style={{ fontSize: 14, color: THEME.colors.textMuted, lineHeight: 1.6, marginBottom: 20 }}>
               {doneMessage || 'Your workspace is ready.'}
             </p>
-            <Button onClick={finish} fullWidth>
+            {error && (
+              <p style={{ color: THEME.colors.error, fontSize: 13, marginBottom: 12 }}>{error}</p>
+            )}
+            <Button onClick={finish} fullWidth loading={loading}>
               Go to dashboard
             </Button>
           </Card>

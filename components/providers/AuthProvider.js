@@ -29,7 +29,9 @@ export default function AuthProvider({ children }) {
   const loadProfile = useCallback(async () => {
     const res = await fetch('/api/auth/me', { credentials: 'include' })
     const data = await res.json().catch(() => ({}))
-    setAppProfile(data.user ?? null)
+    const next = data.user ?? null
+    setAppProfile(next)
+    return next
   }, [])
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export default function AuthProvider({ children }) {
   }, [isLoaded, isSignedIn, clerkUser?.id, loadProfile])
 
   const refresh = useCallback(async () => {
-    await loadProfile()
+    return loadProfile()
   }, [loadProfile])
 
   const logout = useCallback(async () => {

@@ -24,11 +24,20 @@ export default function DashboardPage() {
       router.replace('/sign-in')
       return
     }
-    if (!user.orgId) {
-      router.replace('/onboarding')
-      return
+    if (user.orgId) return
+
+    let cancelled = false
+    ;(async () => {
+      const profile = await refresh()
+      if (cancelled) return
+      if (!profile?.orgId) {
+        router.replace('/onboarding')
+      }
+    })()
+    return () => {
+      cancelled = true
     }
-  }, [authLoading, user, router])
+  }, [authLoading, user?.userId, user?.orgId, router, refresh])
 
   const loadInitiatives = useCallback(async () => {
     setListLoading(true)

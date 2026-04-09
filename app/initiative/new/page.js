@@ -18,15 +18,20 @@ export default function NewInitiativePage() {
       const res = await fetch('/api/initiative', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), type: selected })
+        credentials: 'include',
+        body: JSON.stringify({ title: title.trim(), type: selected }),
       })
 
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to create initiative')
+        const msg = [data.error, data.detail].filter(Boolean).join(' — ') || `Request failed (${res.status})`
+        throw new Error(msg)
       }
 
-      const { initId } = await res.json()
+      const { initId } = data
+      if (!initId) {
+        throw new Error('Server did not return an initiative id.')
+      }
       router.push(`/initiative/${initId}`)
     } catch (err) {
       setError(err.message)
