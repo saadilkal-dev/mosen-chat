@@ -39,7 +39,13 @@ export default function OnboardingPage() {
     setError('')
     if (lower.endsWith('.csv')) {
       const text = await file.text()
-      setEmployees(employeesFromObjects(parseCSVText(text)))
+      const rows = employeesFromObjects(parseCSVText(text))
+      if (rows.length === 0) {
+        setError(
+          'No valid rows found. Use a header row with an email column (e.g. "email", "Email address", or "Work email"). Quoted fields and UTF-8 (Excel) exports are supported.',
+        )
+      }
+      setEmployees(rows)
       return
     }
     if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
@@ -47,7 +53,13 @@ export default function OnboardingPage() {
       const wb = XLSX.read(buf, { type: 'array' })
       const sheet = wb.Sheets[wb.SheetNames[0]]
       const json = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-      setEmployees(employeesFromObjects(json))
+      const rows = employeesFromObjects(json)
+      if (rows.length === 0) {
+        setError(
+          'No valid rows found. The sheet needs a column that contains email addresses (e.g. "email" or "Email address").',
+        )
+      }
+      setEmployees(rows)
       return
     }
     setError('Please upload a .csv or .xlsx file.')
@@ -246,12 +258,13 @@ export default function OnboardingPage() {
             >
               <input
                 type="file"
-                accept=".csv,.xlsx,.xls"
+                accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 style={{ display: 'none' }}
                 id="roster-file"
                 onChange={e => {
                   const f = e.target.files?.[0]
                   if (f) parseFile(f)
+                  e.target.value = ''
                 }}
               />
               <label htmlFor="roster-file" style={{ cursor: 'pointer', color: THEME.colors.leader.primary, fontWeight: 600 }}>
