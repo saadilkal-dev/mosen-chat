@@ -47,6 +47,14 @@ export default function DashboardPage() {
       router.replace('/sign-in')
       return
     }
+    if (user.role === 'employee' && user.orgId) {
+      router.replace('/employee/home')
+      return
+    }
+    if (user.isPlatformAdmin && !user.orgId) {
+      router.replace('/platform')
+      return
+    }
     if (user.orgId) return
 
     let cancelled = false
@@ -60,7 +68,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [authLoading, user?.userId, user?.orgId, router, refresh])
+  }, [authLoading, user?.userId, user?.orgId, user?.role, router, refresh])
 
   const loadInitiatives = useCallback(async () => {
     setListLoading(true)
@@ -287,18 +295,19 @@ export default function DashboardPage() {
           onTeam={() => setTeamModalOpen(true)}
           teamCount={teamList.length}
           onLogout={handleLogout}
+          showPlatformAdmin={!!user.isPlatformAdmin}
         />
       )}
     >
       <TopBar
-        breadcrumbs={[
-          { label: 'Dashboard', href: '/dashboard' },
-        ]}
-        actions={(
-          <Button size="sm" onClick={() => refresh()}>
-            Refresh
-          </Button>
-        )}
+        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }]}
+        actions={
+          user.isPlatformAdmin ? (
+            <Button size="sm" variant="secondary" onClick={() => router.push('/platform')}>
+              Platform admin
+            </Button>
+          ) : undefined
+        }
       />
       <Modal
         isOpen={teamModalOpen}

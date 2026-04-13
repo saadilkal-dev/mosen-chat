@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { getSupabase } from '@/lib/supabase'
 import { getInitiativeRow, getAssignedEmails, getEmployeeInviteUrl, briefContentToString } from '@/lib/leader-store'
+import { sendClerkInvitationsForEmails } from '@/lib/clerk-invitations'
 import { sendEmail, buildInviteEmail } from '@/lib/email'
 import { logEmailSend } from '@/lib/initiative-store'
 
@@ -65,7 +66,14 @@ export async function PUT(req, { params }) {
 
     if (approved === true) {
       const employees = await getAssignedEmails(id)
-      const baseUrl = req.nextUrl?.origin || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'
+      const baseUrl = (req.nextUrl?.origin || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '')
+      const initiativeDest = `${baseUrl}/initiative/${id}/employee`
+      try {
+        await sendClerkInvitationsForEmails(employees, initiativeDest)
+      } catch (clerkErr) {
+        console.error('Clerk invitations (brief):', clerkErr)
+      }
+
       for (const empEmail of employees) {
         try {
           const inviteUrl = await getEmployeeInviteUrl(init.org_id, empEmail, id, baseUrl)

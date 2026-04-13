@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
-import { getInitiativeRow, getOutreachMessages, setOutreachMessages, getAssignedEmails } from '@/lib/leader-store'
+import { getInitiativeRow, getOutreachMessages, setOutreachMessages, getAssignedEmails, buildEmployeeInitiativeSignInUrl } from '@/lib/leader-store'
+import { sendClerkInvitationsForEmails } from '@/lib/clerk-invitations'
 import { getSupabase } from '@/lib/supabase'
 import { sendEmail, buildOutreachEmail } from '@/lib/email'
 import { logEmailSend } from '@/lib/initiative-store'
@@ -49,19 +50,26 @@ export async function PUT(req, { params }) {
 
     if (approved) {
       const employees = await getAssignedEmails(id)
-      const baseUrl = req.nextUrl?.origin || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'
+      const baseUrl = (req.nextUrl?.origin || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '')
+      const initiativeDest = `${baseUrl}/initiative/${id}/employee`
+
+      try {
+        await sendClerkInvitationsForEmails(employees || [], initiativeDest)
+      } catch (clerkErr) {
+        console.error('Clerk invitations (outreach):', clerkErr)
+      }
+
       const supabase = getSupabase()
+      const chatUrl = buildEmployeeInitiativeSignInUrl(baseUrl, id)
+
       for (const empEmail of employees || []) {
         try {
           const { data: empRow } = await supabase
             .from('org_employees')
-            .select('invite_token, name')
+            .select('name')
             .eq('org_id', init.org_id)
             .eq('email', empEmail)
             .maybeSingle()
-          const chatUrl = empRow?.invite_token
-            ? `${baseUrl}/initiative/${id}/employee?token=${encodeURIComponent(empRow.invite_token)}`
-            : `${baseUrl}/initiative/${id}/employee`
           const emailPayload = buildOutreachEmail({
             employeeName: empRow?.name || empEmail.split('@')[0],
             initiativeTitle: init.title,

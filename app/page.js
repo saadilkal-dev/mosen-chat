@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { THEME } from '../lib/theme'
 import { useAuth } from '../components/providers/AuthProvider'
@@ -46,8 +45,13 @@ export default function Home() {
 
   useEffect(() => {
     if (loading || !user) return
+    // Platform admins always land on the platform console first (not leader dashboard).
+    if (user.isPlatformAdmin) {
+      router.replace('/platform')
+      return
+    }
     if (user.orgId) {
-      router.replace('/dashboard')
+      router.replace(user.role === 'employee' ? '/employee/home' : '/dashboard')
     } else {
       router.replace('/onboarding')
     }
@@ -89,19 +93,15 @@ export default function Home() {
         <div style={{ textAlign: 'center', marginBottom: 22 }}>
           <MosenLogo />
           <p style={{ fontSize: 14, color: THEME.colors.textMuted, lineHeight: 1.6 }}>
-            Sign in with your account to manage change initiatives and your organisation.
+            Sign in with the account your organization provided. Access is not available through public
+            registration — your admin or support team onboards your organisation and team data.
           </p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Link href="/sign-in" style={{ textDecoration: 'none' }}>
-            <Button fullWidth>Sign in</Button>
-          </Link>
-          <Link href="/sign-up" style={{ textDecoration: 'none' }}>
-            <Button fullWidth variant="secondary">
-              Create account
-            </Button>
-          </Link>
+          <Button fullWidth type="button" onClick={() => router.push('/sign-in')}>
+            Sign in
+          </Button>
         </div>
       </Card>
     </div>

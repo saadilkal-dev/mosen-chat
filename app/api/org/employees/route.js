@@ -93,9 +93,29 @@ export async function POST(req) {
       .select('*', { count: 'exact', head: true })
       .eq('org_id', orgId)
 
+    const added = results.length
+    const hadInput = Array.isArray(employees) && employees.length > 0
+
+    if (hadInput && added === 0 && errors.length > 0) {
+      const hint =
+        errors.some((e) => String(e).toLowerCase().includes('invite_token')) ||
+        errors.some((e) => String(e).toLowerCase().includes('null value'))
+          ? ' If you use skipInvites, apply migration 004_org_employee_optional_invite.sql (invite_token must be nullable).'
+          : ''
+      return Response.json(
+        {
+          error: `Could not save any team members.${hint}`,
+          added: 0,
+          skipped,
+          errors,
+        },
+        { status: 400 },
+      )
+    }
+
     return Response.json({
       ok: true,
-      added: results.length,
+      added,
       skipped,
       total: count ?? results.length,
       errors: errors.length > 0 ? errors : undefined,

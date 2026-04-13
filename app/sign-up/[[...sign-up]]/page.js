@@ -1,29 +1,27 @@
-import { SignUp } from '@clerk/nextjs'
+import { Suspense } from 'react'
+import SignUpGate from './SignUpGate'
 
+/** Invitation links include Clerk query params — see SignUpGate. Otherwise redirect to sign-in. */
 export default function SignUpPage() {
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-        background: '#FAFAF8',
-      }}
+    <Suspense
+      fallback={(
+        <div
+          style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#FAFAF8',
+            color: '#999',
+            fontSize: 14,
+          }}
+        >
+          Loading…
+        </div>
+      )}
     >
-      <SignUp
-        routing="path"
-        path="/sign-up"
-        signInUrl="/sign-in"
-        appearance={{
-          variables: {
-            colorPrimary: '#534AB7',
-            borderRadius: '12px',
-            fontFamily: "'DM Sans', system-ui, sans-serif",
-          },
-        }}
-      />
-    </div>
+      <SignUpGate />
+    </Suspense>
   )
 }

@@ -24,10 +24,32 @@ export default function OnboardingPage() {
       router.replace('/sign-in')
       return
     }
+    if (user.isPlatformAdmin) {
+      router.replace('/platform')
+      return
+    }
     if (user.orgId) {
-      router.replace('/dashboard')
+      router.replace(user.role === 'employee' ? '/employee/home' : '/dashboard')
     }
   }, [authLoading, user, router])
+
+  useEffect(() => {
+    if (authLoading || !user) return
+    if (user.orgId) return
+    if (!user.onOrgRoster && !user.pendingLeaderProvision && !user.hasLeaderProvisionForEmail) return
+    const t = setInterval(() => {
+      refresh()
+    }, 4000)
+    return () => clearInterval(t)
+  }, [
+    authLoading,
+    user?.userId,
+    user?.orgId,
+    user?.onOrgRoster,
+    user?.pendingLeaderProvision,
+    user?.hasLeaderProvisionForEmail,
+    refresh,
+  ])
 
   async function saveOrganisation() {
     const res = await fetch('/api/org', {
@@ -59,24 +81,53 @@ export default function OnboardingPage() {
     try {
       await saveOrganisation()
 
+      let profile = await refresh()
+      if (!profile?.orgId) {
+        await new Promise((r) => setTimeout(r, 150))
+        profile = await refresh()
+      }
+      if (!profile?.orgId) {
+        throw new Error('Your organisation was not linked yet. Please click Complete setup again.')
+      }
+
       if (importTeam && employees.length > 0) {
-        const res = await fetch('/api/org/employees', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            skipInvites: true,
-            employees: employees.map(({ name, email, department, role }) => ({
-              name,
-              email,
-              department: department || '',
-              role: role || '',
-            })),
-          }),
-        })
-        const data = await res.json().catch(() => ({}))
+        const body = {
+          skipInvites: true,
+          employees: employees.map(({ name, email, department, role }) => ({
+            name,
+            email,
+            department: department || '',
+            role: role || '',
+          })),
+        }
+
+        const postEmployees = async () => {
+          const res = await fetch('/api/org/employees', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body),
+          })
+          const data = await res.json().catch(() => ({}))
+          return { res, data }
+        }
+
+        let { res, data } = await postEmployees()
+        const orgNotReady =
+          res.status === 400 &&
+          String(data.error || '').toLowerCase().includes('organisation')
+        if (orgNotReady) {
+          await refresh()
+          await new Promise((r) => setTimeout(r, 200))
+          ;({ res, data } = await postEmployees())
+        }
+
         if (!res.ok) {
-          throw new Error(data.error || 'Could not save employees.')
+          const detail =
+            Array.isArray(data.errors) && data.errors.length
+              ? ` ${data.errors.slice(0, 5).join(' ')}`
+              : ''
+          throw new Error((data.error || 'Could not save employees.') + detail)
         }
       }
 
@@ -89,7 +140,7 @@ export default function OnboardingPage() {
     }
   }
 
-  if (authLoading || !user || user.orgId) {
+  if (authLoading || !user) {
     return (
       <div
         style={{
@@ -103,6 +154,55 @@ export default function OnboardingPage() {
         }}
       >
         Loading…
+      </div>
+    )
+  }
+
+  if (user.orgId) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: THEME.colors.bg,
+          fontFamily: THEME.font,
+          color: THEME.colors.textMuted,
+        }}
+      >
+        Loading…
+      </div>
+    )
+  }
+
+  const waitForPreload =
+    user.onOrgRoster || user.pendingLeaderProvision || user.hasLeaderProvisionForEmail
+  if (waitForPreload) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          padding: '32px 16px',
+          background: THEME.colors.bg,
+          fontFamily: THEME.font,
+        }}
+      >
+        <div style={{ maxWidth: 480, margin: '0 auto' }}>
+          <Card padding={28}>
+            <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 10, color: THEME.colors.text }}>
+              Connecting your workspace
+            </h1>
+            <p style={{ fontSize: 14, color: THEME.colors.textMuted, marginBottom: 20, lineHeight: 1.6 }}>
+              Your organisation and team were set up by your administrator. We are linking this account to that
+              workspace — use <strong>Refresh</strong> if you are not redirected in a few seconds. You do not need to
+              create a new organisation here.
+            </p>
+            <Button type="button" onClick={() => refresh()}>
+              Refresh status
+            </Button>
+          </Card>
+        </div>
       </div>
     )
   }
