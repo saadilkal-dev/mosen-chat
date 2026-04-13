@@ -147,7 +147,7 @@ export default function ArtifactPanel({ initId, activeTab: controlledTab, onTabC
       }
       case 'Playbook':
         if (!data.playbook || (Array.isArray(data.playbook) && data.playbook.length === 0)) return renderEmptyState('Playbook')
-        return <PlaybookCard versions={Array.isArray(data.playbook) ? data.playbook : [data.playbook]} />
+        return <PlaybookCard versions={Array.isArray(data.playbook) ? data.playbook : [data.playbook]} initId={initId} />
       case 'Outreach':
         if (!data.outreach || data.outreach.length === 0) return renderEmptyState('Outreach')
         return <OutreachCard outreachList={data.outreach} initId={initId} onRefresh={() => loadTabData('Outreach')} />

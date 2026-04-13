@@ -1,11 +1,13 @@
 'use client'
 import { useState } from 'react'
+import ArtifactModal from './ArtifactModal'
 
-export default function PlaybookCard({ versions = [], activeVersion: controlledVersion, onVersionChange, onRequestRevision }) {
+export default function PlaybookCard({ versions = [], activeVersion: controlledVersion, onVersionChange, onRequestRevision, initId }) {
   const [internalVersion, setInternalVersion] = useState(versions.length - 1)
   const activeIdx = controlledVersion !== undefined ? controlledVersion : internalVersion
   const current = versions[activeIdx] || versions[versions.length - 1]
   const [expandedPhases, setExpandedPhases] = useState({})
+  const [modalState, setModalState] = useState({ open: false, artifactName: '', activityTitle: '', phaseName: '' })
 
   if (!current) return null
 
@@ -88,7 +90,25 @@ export default function PlaybookCard({ versions = [], activeVersion: controlledV
                   {activity.artifacts?.length > 0 && (
                     <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                       {activity.artifacts.map((a, k) => (
-                        <span key={k} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: '#F6F5FF', color: '#534AB7', border: '1px solid #D8D5F5' }}>{a}</span>
+                        <button
+                          key={k}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setModalState({ open: true, artifactName: a, activityTitle: activity.title, phaseName: phase.name })
+                          }}
+                          style={{
+                            fontSize: 11, padding: '3px 10px', borderRadius: 12,
+                            background: '#F6F5FF', color: '#534AB7', border: '1px solid #D8D5F5',
+                            cursor: 'pointer', fontWeight: 500,
+                            fontFamily: "'DM Sans', system-ui, sans-serif",
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => { e.target.style.background = '#EAE8FC'; e.target.style.borderColor = '#534AB7' }}
+                          onMouseLeave={e => { e.target.style.background = '#F6F5FF'; e.target.style.borderColor = '#D8D5F5' }}
+                        >
+                          {a}
+                          <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.6 }}>→</span>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -112,6 +132,14 @@ export default function PlaybookCard({ versions = [], activeVersion: controlledV
           ))}
         </div>
       )}
+      <ArtifactModal
+        open={modalState.open}
+        onClose={() => setModalState(prev => ({ ...prev, open: false }))}
+        artifactName={modalState.artifactName}
+        activityTitle={modalState.activityTitle}
+        phaseName={modalState.phaseName}
+        initId={initId}
+      />
     </div>
   )
 }
