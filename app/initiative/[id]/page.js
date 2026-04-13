@@ -129,7 +129,7 @@ export default function InitiativePage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#fff' }}>
       {/* Messages */}
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
-        {messages.map((msg, i) => (
+        {messages.filter(msg => msg.text?.trim()).map((msg, i) => (
           <div key={i} style={{
             display: 'flex', justifyContent: msg.from === 'user' ? 'flex-end' : 'flex-start',
             marginBottom: 16
