@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { THEME } from '../../lib/theme'
 import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
@@ -14,7 +15,10 @@ export default function Sidebar({
   onTeam,
   teamCount = 0,
   onLogout,
+  employeeMode = false,
+  showPlatformAdmin = false,
 }) {
+  const accent = employeeMode ? THEME.colors.employee : THEME.colors.leader
   return (
     <div style={{
       display: 'flex',
@@ -31,7 +35,7 @@ export default function Sidebar({
         padding: '4px 8px',
         marginBottom: 4,
       }}>
-        <Avatar type="mosen" persona="leader" size={28} />
+        <Avatar type="mosen" persona={employeeMode ? 'employee' : 'leader'} size={28} />
         <span style={{ fontSize: 17, fontWeight: 700, color: THEME.colors.text, letterSpacing: '-0.02em' }}>
           Mosen
         </span>
@@ -47,25 +51,27 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* New Initiative button */}
-      <button
-        onClick={onNew}
-        style={{
-          padding: '10px 14px',
-          background: THEME.colors.leader.light,
-          color: THEME.colors.leader.primary,
-          border: `1px solid ${THEME.colors.leader.border}`,
-          borderRadius: THEME.radius.md,
-          fontSize: 13,
-          fontWeight: 600,
-          fontFamily: THEME.font,
-          cursor: 'pointer',
-          transition: 'all 0.15s ease',
-          textAlign: 'left',
-        }}
-      >
-        + New Initiative
-      </button>
+      {/* New Initiative (leaders only) */}
+      {!employeeMode && typeof onNew === 'function' && (
+        <button
+          onClick={onNew}
+          style={{
+            padding: '10px 14px',
+            background: THEME.colors.leader.light,
+            color: THEME.colors.leader.primary,
+            border: `1px solid ${THEME.colors.leader.border}`,
+            borderRadius: THEME.radius.md,
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: THEME.font,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            textAlign: 'left',
+          }}
+        >
+          + New Initiative
+        </button>
+      )}
 
       {/* Initiative list */}
       <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8 }}>
@@ -80,7 +86,7 @@ export default function Sidebar({
             onClick={() => onSelect(init.id)}
             style={{
               padding: '10px 12px',
-              background: activeId === init.id ? THEME.colors.leader.light : 'transparent',
+              background: activeId === init.id ? accent.light : 'transparent',
               border: 'none',
               borderRadius: THEME.radius.sm,
               cursor: 'pointer',
@@ -115,7 +121,29 @@ export default function Sidebar({
         ))}
       </div>
 
-      {typeof onTeam === 'function' && (
+      {showPlatformAdmin && (
+        <Link
+          href="/platform"
+          style={{
+            padding: '10px 14px',
+            background: THEME.colors.platform.accentSoft,
+            color: THEME.colors.platform.accent,
+            border: `1px solid ${THEME.colors.border}`,
+            borderRadius: THEME.radius.md,
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: THEME.font,
+            textDecoration: 'none',
+            textAlign: 'left',
+            display: 'block',
+            marginTop: 8,
+          }}
+        >
+          Platform admin
+        </Link>
+      )}
+
+      {!employeeMode && typeof onTeam === 'function' && (
         <button
           type="button"
           onClick={onTeam}

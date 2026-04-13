@@ -77,6 +77,10 @@ export default function AuthProvider({ children }) {
       orgId: appProfile?.orgId ?? null,
       orgName: appProfile?.orgName ?? null,
       role: appProfile?.role || 'leader',
+      onOrgRoster: !!appProfile?.onOrgRoster,
+      pendingLeaderProvision: !!appProfile?.pendingLeaderProvision,
+      hasLeaderProvisionForEmail: !!appProfile?.hasLeaderProvisionForEmail,
+      isPlatformAdmin: !!appProfile?.isPlatformAdmin,
     }
   }, [isSignedIn, clerkUser, appProfile])
 

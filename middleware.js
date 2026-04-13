@@ -3,9 +3,11 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 /** App pages that require a Clerk session (APIs use route-level auth instead). */
 const isProtectedPage = createRouteMatcher([
   '/dashboard(.*)',
+  '/employee/home(.*)',
   '/onboarding(.*)',
   '/admin(.*)',
   '/initiative(.*)',
+  '/platform(.*)',
 ])
 
 export default clerkMiddleware(async (getAuth, req) => {

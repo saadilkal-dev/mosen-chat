@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useAuth } from '@/components/providers/AuthProvider'
 import BriefDisplay from '@/components/employee/BriefDisplay'
 import ConsentCard from '@/components/employee/ConsentCard'
 import ClosedLoopCard from '@/components/employee/ClosedLoopCard'
@@ -145,6 +146,7 @@ function AvatarSpacer() {
 export default function EmployeePage({ params, searchParams }) {
   const initId = params.id
   const token  = searchParams.token
+  const { user, loading: authLoading } = useAuth()
 
   const [phase, setPhase]                 = useState('loading')
   const [employeeName, setEmployeeName]   = useState('')
@@ -169,13 +171,21 @@ export default function EmployeePage({ params, searchParams }) {
 
   // ── init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!token) { setPhase('error'); return }
+    if (!token) {
+      if (authLoading) return
+      if (!user) {
+        setPhase('error')
+        return
+      }
+    }
     async function init() {
       try {
+        const tp = token ? `?token=${encodeURIComponent(token)}` : ''
+        const cred = token ? {} : { credentials: 'include' }
         const [briefRes, clRes, histRes] = await Promise.all([
-          fetch(`/api/initiative/${initId}/employee/brief?token=${encodeURIComponent(token)}`),
-          fetch(`/api/initiative/${initId}/employee/closed-loop?token=${encodeURIComponent(token)}`),
-          fetch(`/api/initiative/${initId}/employee/chat?token=${encodeURIComponent(token)}`),
+          fetch(`/api/initiative/${initId}/employee/brief${tp}`, cred),
+          fetch(`/api/initiative/${initId}/employee/closed-loop${tp}`, cred),
+          fetch(`/api/initiative/${initId}/employee/chat${tp}`, cred),
         ])
         if (!briefRes.ok) { setPhase('error'); return }
         const briefData = await briefRes.json()
@@ -215,7 +225,7 @@ export default function EmployeePage({ params, searchParams }) {
     }
     init()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initId, token])
+  }, [initId, token, authLoading, user?.userId])
 
   // ── trigger first message ─────────────────────────────────────────────────
   async function triggerFirstMessage() {
@@ -224,9 +234,10 @@ export default function EmployeePage({ params, searchParams }) {
       const res = await fetch(`/api/initiative/${initId}/employee/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: token ? 'same-origin' : 'include',
         body: JSON.stringify({
           message: '[SESSION_START] The employee just opened Mosen for the first time. Follow your first contact instructions — introduce yourself simply, warm tone, 3–4 sentences max, one question at the end.',
-          token,
+          ...(token ? { token } : {}),
           isSystemTrigger: true,
         }),
       })
@@ -253,7 +264,8 @@ export default function EmployeePage({ params, searchParams }) {
       const res = await fetch(`/api/initiative/${initId}/employee/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, token }),
+        credentials: token ? 'same-origin' : 'include',
+        body: JSON.stringify({ message: text, ...(token ? { token } : {}) }),
       })
       const data = await res.json()
       setMessages(prev => [...prev, { id: mkId(), from: 'mosen', text: data.response, ts: Date.now(), artifacts: data.artifacts || [], error: !data.response }])
@@ -271,7 +283,8 @@ export default function EmployeePage({ params, searchParams }) {
       await fetch(`/api/initiative/${initId}/employee/consent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, consentId, decision }),
+        credentials: token ? 'same-origin' : 'include',
+        body: JSON.stringify({ consentId, decision, ...(token ? { token } : {}) }),
       })
     } catch {
       setConsentStates(prev => { const c = { ...prev }; delete c[consentId]; return c })
