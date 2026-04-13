@@ -50,7 +50,13 @@ export default function AuthProvider({ children }) {
   }, [loadProfile])
 
   const logout = useCallback(async () => {
-    await clerk.signOut({ redirectUrl: '/' })
+    try {
+      await clerk.signOut()
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.location.assign(`${window.location.origin}/`)
+      }
+    }
   }, [clerk])
 
   const mergedUser = useMemo(() => {

@@ -47,8 +47,54 @@ export default function OutreachCard({ outreachList = [], initId, onRefresh }) {
     boxShadow: THEME.shadow.sm,
   }
 
+  const totalMessages = outreachList.length
+  const sentCount = outreachList.filter((m) => m.status === 'approved').length
+  const pendingCount = totalMessages - sentCount
+
   return (
     <div style={{ padding: 20 }}>
+      {totalMessages > 0 && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div
+            style={{
+              padding: '8px 14px',
+              borderRadius: 10,
+              background: THEME.colors.surface,
+              border: `1px solid ${THEME.colors.border}`,
+              fontSize: 12,
+            }}
+          >
+            <span style={{ fontWeight: 600, color: THEME.colors.leader.primary }}>{totalMessages}</span>
+            <span style={{ color: THEME.colors.textMuted, marginLeft: 4 }}>total</span>
+          </div>
+          <div
+            style={{
+              padding: '8px 14px',
+              borderRadius: 10,
+              background: THEME.colors.employee.light,
+              border: `1px solid ${THEME.colors.employee.border}`,
+              fontSize: 12,
+            }}
+          >
+            <span style={{ fontWeight: 600, color: THEME.colors.employee.primary }}>{sentCount}</span>
+            <span style={{ color: THEME.colors.employee.primary, marginLeft: 4 }}>sent</span>
+          </div>
+          {pendingCount > 0 && (
+            <div
+              style={{
+                padding: '8px 14px',
+                borderRadius: 10,
+                background: THEME.colors.warningBg,
+                border: '1px solid #F5E6C8',
+                fontSize: 12,
+              }}
+            >
+              <span style={{ fontWeight: 600, color: THEME.colors.warning }}>{pendingCount}</span>
+              <span style={{ color: THEME.colors.warning, marginLeft: 4 }}>pending</span>
+            </div>
+          )}
+        </div>
+      )}
       {outreachList.map((msg, index) => {
         const rowKey = msg.id != null ? String(msg.id) : `outreach-${index}`
         const isOpen = expandedId === msg.id || editingId === msg.id

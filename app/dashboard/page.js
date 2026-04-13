@@ -157,6 +157,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          skipInvites: true,
           employees: rosterEmployees.map(({ name, email, department, role }) => ({
             name,
             email,
@@ -208,6 +209,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          skipInvites: true,
           employees: [
             {
               name,
@@ -242,9 +244,8 @@ export default function DashboardPage() {
     }
   }
 
-  const handleLogout = async () => {
-    await logout()
-    router.replace('/')
+  const handleLogout = () => {
+    logout()
   }
 
   const handleNewInitiative = () => {
@@ -306,7 +307,7 @@ export default function DashboardPage() {
         maxWidth={720}
       >
               <p style={{ fontSize: 14, color: THEME.colors.textMuted, margin: '0 0 20px', lineHeight: 1.55 }}>
-                People here can be assigned to initiatives. Add one person at a time, or expand bulk import when you have a spreadsheet.
+                People here can be assigned to initiatives. Adding someone saves them to your roster only — invitations are not sent from here. Add one at a time or use bulk import when you have a spreadsheet.
               </p>
 
               <Card padding={22} style={{ marginBottom: 20 }}>

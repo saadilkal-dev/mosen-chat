@@ -12,11 +12,12 @@ export async function POST(req) {
       return Response.json({ error: 'You must create an organisation first' }, { status: 400 })
     }
 
-    const { employees } = await req.json()
+    const { employees, skipInvites } = await req.json()
     if (!Array.isArray(employees) || employees.length === 0) {
       return Response.json({ error: 'At least one employee is required' }, { status: 400 })
     }
 
+    const deferInvites = !!skipInvites
     const orgId = user.orgId
     const supabase = getSupabase()
     const results = []
@@ -43,7 +44,7 @@ export async function POST(req) {
         continue
       }
 
-      const token = mkId()
+      const token = deferInvites ? null : mkId()
       const employee = {
         name: emp.name || '',
         email,
@@ -53,16 +54,18 @@ export async function POST(req) {
         addedAt: Date.now(),
       }
 
-      const { error: invErr } = await supabase.from('invites').insert({
-        token,
-        org_id: orgId,
-        emp_email: email,
-        emp_name: employee.name,
-        expires_at: expiresAt,
-      })
-      if (invErr) {
-        errors.push(invErr.message)
-        continue
+      if (!deferInvites) {
+        const { error: invErr } = await supabase.from('invites').insert({
+          token,
+          org_id: orgId,
+          emp_email: email,
+          emp_name: employee.name,
+          expires_at: expiresAt,
+        })
+        if (invErr) {
+          errors.push(invErr.message)
+          continue
+        }
       }
 
       const { error: empErr } = await supabase.from('org_employees').insert({
@@ -75,7 +78,9 @@ export async function POST(req) {
       })
       if (empErr) {
         errors.push(empErr.message)
-        await supabase.from('invites').delete().eq('token', token)
+        if (!deferInvites && token) {
+          await supabase.from('invites').delete().eq('token', token)
+        }
         continue
       }
 
