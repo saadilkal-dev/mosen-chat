@@ -12,7 +12,7 @@ export async function GET(req) {
 
     const sb = getSupabase()
 
-    // Get user email
+    // Get user email — used to match shared_with and initiative_invites
     const { data: userProfile, error: profileError } = await sb
       .from('app_user_profiles')
       .select('email')
@@ -25,49 +25,72 @@ export async function GET(req) {
 
     const userEmail = userProfile.email
 
-    // Fetch initiatives where is_public = true
-    const { data: initiatives, error: initError } = await sb
+    // Fetch initiatives where the user's email is in the shared_with array.
+    // This correctly scopes to initiatives the user was explicitly shared on,
+    // regardless of whether they're a leader or employee role in the system.
+    const { data: sharedInitiatives, error: sharedError } = await sb
       .from('initiatives')
-      .select(`
-        id,
-        title,
-        brief,
-        brief_summary,
-        brief_excerpt,
-        playbook,
-        created_at,
-        published_at,
-        is_public,
-        shared_with
-      `)
-      .eq('is_public', true)
+      .select('id, title, brief_summary, brief_excerpt, published_at, is_public, leader_clerk_id')
+      .contains('shared_with', [userEmail])
 
-    if (initError) {
-      console.error('[employee/initiatives] fetch error:', initError)
+    if (sharedError) {
+      console.error('[employee/initiatives] shared_with fetch error:', sharedError)
       return Response.json({ error: 'Failed to fetch initiatives' }, { status: 500 })
     }
 
-    let initiativesWithStatus = []
-    if (initiatives && initiatives.length > 0) {
-      initiativesWithStatus = initiatives.map(init => {
-        let status = 'pending'
-        if (init.published_at) {
-          status = 'in-progress'
-        }
+    // Also check initiative_invites table (token-based invites that have been accepted or are pending)
+    const { data: inviteRows, error: inviteError } = await sb
+      .from('initiative_invites')
+      .select('initiative_id, status')
+      .eq('employee_email', userEmail)
+      .neq('status', 'declined')
 
-        return {
-          id: init.id,
-          title: init.title,
-          brief_summary: init.brief_summary || 'View the initiative for more details',
-          brief_excerpt: init.brief_excerpt || (init.brief ? init.brief.slice(0, 150) : ''),
-          leader_name: 'Your leader',
-          status,
-          published_at: init.published_at,
-        }
-      })
+    if (inviteError) {
+      console.error('[employee/initiatives] invites fetch error:', inviteError)
     }
 
-    return Response.json(initiativesWithStatus)
+    // Collect invited initiative IDs not already in sharedInitiatives
+    const sharedIds = new Set((sharedInitiatives || []).map(i => i.id))
+    const invitedIds = (inviteRows || [])
+      .map(r => r.initiative_id)
+      .filter(id => !sharedIds.has(id))
+
+    let invitedInitiatives = []
+    if (invitedIds.length > 0) {
+      const { data, error } = await sb
+        .from('initiatives')
+        .select('id, title, brief_summary, brief_excerpt, published_at, is_public, leader_clerk_id')
+        .in('id', invitedIds)
+      if (!error && data) invitedInitiatives = data
+    }
+
+    const allInitiatives = [...(sharedInitiatives || []), ...invitedInitiatives]
+
+    // Look up leader names for all unique leader_clerk_ids
+    const leaderIds = [...new Set(allInitiatives.map(i => i.leader_clerk_id).filter(Boolean))]
+    let leaderNameMap = {}
+    if (leaderIds.length > 0) {
+      const { data: profiles } = await sb
+        .from('app_user_profiles')
+        .select('clerk_id, name, email')
+        .in('clerk_id', leaderIds)
+      if (profiles) {
+        for (const p of profiles) leaderNameMap[p.clerk_id] = p.name || p.email || 'Your leader'
+      }
+    }
+
+    const result = allInitiatives.map(init => ({
+      id: init.id,
+      title: init.title,
+      brief_summary: init.brief_summary || 'View the initiative for more details',
+      brief_excerpt: init.brief_excerpt || '',
+      leader_name: leaderNameMap[init.leader_clerk_id] || 'Your leader',
+      status: init.published_at ? 'in-progress' : 'pending',
+      published_at: init.published_at,
+      is_public: init.is_public,
+    }))
+
+    return Response.json(result)
   } catch (err) {
     console.error('[employee/initiatives] error:', err.message)
     return Response.json({ error: err.message }, { status: 500 })

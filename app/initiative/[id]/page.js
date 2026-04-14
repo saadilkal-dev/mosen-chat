@@ -100,12 +100,23 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
   }
 
   function handlePlaybookConfirmed() {
+    // Don't reload chat — reloading remounts PlaybookApprovalCard with confirmed=false
+    // The card shows its own success state; workspace loads playbook independently
     setActiveView('playbook')
-    loadChat()
   }
 
   function handleRequestChanges() {
-    inputRef.current?.focus()
+    const el = inputRef.current
+    if (!el) return
+    el.focus()
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    // Brief ring flash so the user sees the input activate
+    el.style.outline = '2px solid #534AB7'
+    el.style.outlineOffset = '2px'
+    setTimeout(() => {
+      el.style.outline = ''
+      el.style.outlineOffset = ''
+    }, 1200)
   }
 
   useEffect(() => {
@@ -271,11 +282,11 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
         </div>
       )}
 
-      {/* Messages — centered with max-width */}
+      {/* Messages scroll area — outer div is full-width so draft card can stretch edge-to-edge */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 24px 16px' }}>
 
-          {/* Subtle Mosen label at top of chat */}
+        {/* Mosen label — centered */}
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 24px 0' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
@@ -306,74 +317,91 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
               <span>Starting conversation…</span>
             </div>
           )}
+        </div>
 
-          {messages.filter(msg => msg.text?.trim()).map((msg, i) => (
-            <div key={msg.id || i} style={{
-              display: 'flex', justifyContent: msg.from === 'user' ? 'flex-end' : 'flex-start',
-              marginBottom: 18,
-            }}>
-              <div style={{ display: 'flex', gap: 10, maxWidth: '88%', flexDirection: msg.from === 'user' ? 'row-reverse' : 'row' }}>
-                {/* Avatar */}
+        {/* Messages — each bubble centers itself; draft card stretches full width */}
+        {messages.filter(msg => msg.text?.trim()).map((msg, i) => {
+          const draftCard = msg.from === 'mosen' ? msg.cards?.find(c => c.type === 'playbook_draft') : null
+          const inlineCards = msg.cards?.filter(c => c.type !== 'playbook_draft') || []
+
+          return (
+            <div key={msg.id || i}>
+              {/* Bubble row — constrained to 720px center */}
+              <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 24px', marginBottom: draftCard ? 14 : 18 }}>
                 <div style={{
-                  width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                  background: msg.from === 'user' ? '#EDECEA' : 'linear-gradient(135deg, #534AB7, #7B72D6)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 800,
-                  boxShadow: msg.from === 'mosen' ? '0 1px 4px rgba(83,74,183,0.25)' : 'none',
-                  marginTop: 2,
+                  display: 'flex', justifyContent: msg.from === 'user' ? 'flex-end' : 'flex-start',
                 }}>
-                  {msg.from === 'user' ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                      <circle cx="12" cy="8" r="4" fill="#888" />
-                      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#888" strokeWidth="2" />
-                    </svg>
-                  ) : (
-                    <span style={{ color: '#fff' }}>M</span>
-                  )}
-                </div>
-                {/* Bubble + cards */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{
-                    padding: '11px 16px', borderRadius: 16, fontSize: 14, lineHeight: 1.75,
-                    color: '#1A1A18',
-                    background: msg.from === 'user' ? '#EDECEA' : '#fff',
-                    border: msg.from === 'user' ? 'none' : '1px solid #EBEBEA',
-                    borderTopRightRadius: msg.from === 'user' ? 4 : 16,
-                    borderTopLeftRadius: msg.from === 'user' ? 16 : 4,
-                    boxShadow: msg.from === 'mosen' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
-                  }}>
-                    {msg.from === 'mosen'
-                      ? <ReactMarkdown components={mdComponents}>{msg.text}</ReactMarkdown>
-                      : <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
-                    }
+                  <div style={{ display: 'flex', gap: 10, maxWidth: '88%', flexDirection: msg.from === 'user' ? 'row-reverse' : 'row' }}>
+                    {/* Avatar */}
+                    <div style={{
+                      width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                      background: msg.from === 'user' ? '#EDECEA' : 'linear-gradient(135deg, #534AB7, #7B72D6)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 800,
+                      boxShadow: msg.from === 'mosen' ? '0 1px 4px rgba(83,74,183,0.25)' : 'none',
+                      marginTop: 2,
+                    }}>
+                      {msg.from === 'user' ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="8" r="4" fill="#888" />
+                          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#888" strokeWidth="2" />
+                        </svg>
+                      ) : (
+                        <span style={{ color: '#fff' }}>M</span>
+                      )}
+                    </div>
+                    {/* Bubble + inline cards */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{
+                        padding: '11px 16px', borderRadius: 16, fontSize: 14, lineHeight: 1.75,
+                        color: '#1A1A18',
+                        background: msg.from === 'user' ? '#EDECEA' : '#fff',
+                        border: msg.from === 'user' ? 'none' : '1px solid #EBEBEA',
+                        borderTopRightRadius: msg.from === 'user' ? 4 : 16,
+                        borderTopLeftRadius: msg.from === 'user' ? 16 : 4,
+                        boxShadow: msg.from === 'mosen' ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+                      }}>
+                        {msg.from === 'mosen'
+                          ? <ReactMarkdown components={mdComponents}>{msg.text}</ReactMarkdown>
+                          : <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
+                        }
+                      </div>
+                      {msg.from === 'mosen' && inlineCards.map((card, ci) => (
+                        card.type === 'option_cards'
+                          ? <OptionCardsChat
+                              key={ci}
+                              options={card.options}
+                              onSelect={(value) => sendMessage(value)}
+                              disabled={loading}
+                            />
+                          : <ArtifactChatCard
+                              key={ci}
+                              artifact={card}
+                              onOpen={handleArtifactCardClick}
+                            />
+                      ))}
+                    </div>
                   </div>
-                  {msg.from === 'mosen' && msg.cards?.length > 0 && msg.cards.map((card, ci) => (
-                    card.type === 'playbook_draft'
-                      ? <PlaybookApprovalCard
-                          key={ci}
-                          draft={card}
-                          initId={initiativeId}
-                          onConfirmed={handlePlaybookConfirmed}
-                          onRequestChanges={handleRequestChanges}
-                        />
-                      : card.type === 'option_cards'
-                        ? <OptionCardsChat
-                            key={ci}
-                            options={card.options}
-                            onSelect={(value) => sendMessage(value)}
-                            disabled={loading}
-                          />
-                        : <ArtifactChatCard
-                            key={ci}
-                            artifact={card}
-                            onOpen={handleArtifactCardClick}
-                          />
-                  ))}
                 </div>
               </div>
-            </div>
-          ))}
 
+              {/* Draft card — full width of the chat panel, small padding only */}
+              {draftCard && (
+                <div style={{ padding: '0 16px', marginBottom: 18 }}>
+                  <PlaybookApprovalCard
+                    draft={draftCard}
+                    initId={initiativeId}
+                    onConfirmed={handlePlaybookConfirmed}
+                    onRequestChanges={handleRequestChanges}
+                  />
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {/* Loading indicator + scroll anchor — centered */}
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 24px 16px' }}>
           {loading && (
             <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
               <div style={{
@@ -398,7 +426,6 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
               </div>
             </div>
           )}
-
           <div ref={messagesEndRef} />
         </div>
       </div>

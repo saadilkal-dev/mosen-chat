@@ -27,9 +27,7 @@ export default function EmployeeHomePage() {
       router.replace('/onboarding')
       return
     }
-    if (user.role !== 'employee') {
-      router.replace('/dashboard')
-    }
+    // Leaders can also be employees on other initiatives — don't redirect them away
   }, [authLoading, user, router])
 
   const loadList = useCallback(async () => {
@@ -41,7 +39,8 @@ export default function EmployeeHomePage() {
         return
       }
       const data = await res.json().catch(() => ({}))
-      setInitiatives(Array.isArray(data.initiatives) ? data.initiatives : [])
+      // API returns an array directly
+      setInitiatives(Array.isArray(data) ? data : (Array.isArray(data.initiatives) ? data.initiatives : []))
     } catch {
       setInitiatives([])
     } finally {
@@ -50,11 +49,11 @@ export default function EmployeeHomePage() {
   }, [])
 
   useEffect(() => {
-    if (!user?.orgId || user.role !== 'employee') return
+    if (!user?.orgId) return
     loadList()
-  }, [user?.orgId, user?.role, loadList])
+  }, [user?.orgId, loadList])
 
-  if (authLoading || !user || !user.orgId || user.role !== 'employee') {
+  if (authLoading || !user || !user.orgId) {
     return (
       <div
         style={{
@@ -82,7 +81,7 @@ export default function EmployeeHomePage() {
           orgName={user.orgName}
           initiatives={initiatives}
           activeId={null}
-          onSelect={(id) => router.push(`/initiative/${id}/employee`)}
+          onSelect={(id) => router.push(`/initiative/${id}`)}
           teamCount={0}
           onLogout={logout}
           employeeMode
@@ -123,7 +122,7 @@ export default function EmployeeHomePage() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => router.push(`/initiative/${item.id}/employee`)}
+                onClick={() => router.push(`/initiative/${item.id}`)}
                 style={{
                   textAlign: 'left',
                   padding: 18,

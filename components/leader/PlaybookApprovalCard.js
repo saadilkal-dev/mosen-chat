@@ -7,22 +7,26 @@ export default function PlaybookApprovalCard({ draft, initId, onConfirmed, onReq
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const contentRef = useRef(null)
+  const tocRef = useRef(null)
   const sectionRefs = useRef({})
+  const activeButtonRefs = useRef({})
 
   const phases = draft?.phases || []
   const totalActivities = draft?.totalActivities || phases.reduce((sum, p) => sum + (p.activities?.length || 0), 0)
 
-  // Track active section on scroll
+  // Track active section on scroll using getBoundingClientRect (reliable across all scroll contexts)
   useEffect(() => {
     const container = contentRef.current
     if (!container) return
 
     const onScroll = () => {
-      const containerTop = container.scrollTop
+      const containerRect = container.getBoundingClientRect()
       let current = 'phase-0'
+      // Iterate in insertion order (top-to-bottom DOM order)
       for (const [key, el] of Object.entries(sectionRefs.current)) {
         if (!el) continue
-        if (el.offsetTop - 24 <= containerTop) current = key
+        const dist = el.getBoundingClientRect().top - containerRect.top
+        if (dist <= 48) current = key
       }
       setActiveSection(current)
     }
@@ -31,11 +35,25 @@ export default function PlaybookApprovalCard({ draft, initId, onConfirmed, onReq
     return () => container.removeEventListener('scroll', onScroll)
   }, [])
 
+  // Auto-scroll TOC to keep active item visible
+  useEffect(() => {
+    const toc = tocRef.current
+    const btn = activeButtonRefs.current[activeSection]
+    if (!toc || !btn) return
+    const tocRect = toc.getBoundingClientRect()
+    const btnRect = btn.getBoundingClientRect()
+    if (btnRect.top < tocRect.top || btnRect.bottom > tocRect.bottom) {
+      btn.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [activeSection])
+
   const scrollTo = useCallback((key) => {
     const el = sectionRefs.current[key]
     const container = contentRef.current
     if (!el || !container) return
-    container.scrollTo({ top: el.offsetTop - 16, behavior: 'smooth' })
+    const containerRect = container.getBoundingClientRect()
+    const elRect = el.getBoundingClientRect()
+    container.scrollBy({ top: elRect.top - containerRect.top - 16, behavior: 'smooth' })
     setActiveSection(key)
   }, [])
 
@@ -87,14 +105,14 @@ export default function PlaybookApprovalCard({ draft, initId, onConfirmed, onReq
 
   return (
     <div style={{
-      border: '1px solid #D8D5F5',
-      borderRadius: 12,
-      background: '#FAFAF8',
+      border: '1.5px solid #C8C4F0',
+      borderRadius: 14,
+      background: '#fff',
       overflow: 'hidden',
       fontFamily: "'DM Sans', system-ui, sans-serif",
       fontSize: 13,
       width: '100%',
-      maxWidth: 600,
+      boxShadow: '0 4px 20px rgba(83,74,183,0.10), 0 1px 4px rgba(0,0,0,0.06)',
     }}>
       {/* Header */}
       <div style={{
@@ -125,23 +143,26 @@ export default function PlaybookApprovalCard({ draft, initId, onConfirmed, onReq
       </div>
 
       {/* Two-pane body */}
-      <div style={{ display: 'flex', height: 420, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', height: 480, overflow: 'hidden' }}>
 
         {/* Left TOC */}
-        <div style={{
-          width: 172,
-          flexShrink: 0,
-          background: '#F6F5FF',
-          borderRight: '1px solid #EBEBEA',
-          overflowY: 'auto',
-          padding: '12px 0',
-        }}>
+        <div
+          ref={tocRef}
+          style={{
+            width: 180,
+            flexShrink: 0,
+            background: '#F6F5FF',
+            borderRight: '1px solid #EBEBEA',
+            overflowY: 'auto',
+            padding: '12px 0',
+          }}
+        >
           <div style={{
             padding: '2px 14px 8px',
-            fontSize: 11,
-            fontWeight: 600,
+            fontSize: 10,
+            fontWeight: 700,
             color: '#B0B0AA',
-            letterSpacing: '0.04em',
+            letterSpacing: '0.06em',
             textTransform: 'uppercase',
           }}>
             Phases
@@ -154,12 +175,13 @@ export default function PlaybookApprovalCard({ draft, initId, onConfirmed, onReq
               <div key={pi}>
                 {/* Phase entry */}
                 <button
+                  ref={el => { activeButtonRefs.current[phaseKey] = el }}
                   onClick={() => scrollTo(phaseKey)}
                   style={{
                     display: 'block',
                     width: '100%',
                     textAlign: 'left',
-                    padding: '5px 14px',
+                    padding: '6px 14px',
                     background: isPhaseActive ? '#EDE9FF' : 'transparent',
                     border: 'none',
                     cursor: 'pointer',
@@ -169,6 +191,7 @@ export default function PlaybookApprovalCard({ draft, initId, onConfirmed, onReq
                     lineHeight: 1.4,
                     borderLeft: isPhaseActive ? '2px solid #534AB7' : '2px solid transparent',
                     transition: 'all 0.1s',
+                    fontFamily: "'DM Sans', system-ui, sans-serif",
                   }}
                 >
                   {phase.name}
@@ -181,6 +204,7 @@ export default function PlaybookApprovalCard({ draft, initId, onConfirmed, onReq
                   return (
                     <button
                       key={ai}
+                      ref={el => { activeButtonRefs.current[actKey] = el }}
                       onClick={() => scrollTo(actKey)}
                       style={{
                         display: 'block',
@@ -198,6 +222,8 @@ export default function PlaybookApprovalCard({ draft, initId, onConfirmed, onReq
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
+                        fontFamily: "'DM Sans', system-ui, sans-serif",
+                        transition: 'all 0.1s',
                       }}
                     >
                       {act.title}
@@ -299,11 +325,11 @@ export default function PlaybookApprovalCard({ draft, initId, onConfirmed, onReq
       {/* Footer */}
       <div style={{
         borderTop: '1px solid #EBEBEA',
-        padding: '12px 16px',
+        padding: '14px 18px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: '#FAFAF8',
+        background: '#fff',
       }}>
         <button
           onClick={handleApprove}

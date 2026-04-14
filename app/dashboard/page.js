@@ -21,6 +21,8 @@ export default function DashboardPage() {
   const [teamModalOpen, setTeamModalOpen] = useState(false)
   const [initiatives, setInitiatives] = useState([])
   const [listLoading, setListLoading] = useState(true)
+  const [empInitiatives, setEmpInitiatives] = useState([])
+  const [empLoading, setEmpLoading] = useState(true)
   const [rosterEmployees, setRosterEmployees] = useState([])
   const [rosterFileName, setRosterFileName] = useState('')
   const [teamList, setTeamList] = useState([])
@@ -96,6 +98,17 @@ export default function DashboardPage() {
     if (!user?.orgId) return
     loadInitiatives()
   }, [user?.orgId, loadInitiatives])
+
+  // Load initiatives the leader is participating in as an employee
+  useEffect(() => {
+    if (!user?.orgId) return
+    setEmpLoading(true)
+    fetch('/api/employee/initiatives', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setEmpInitiatives(Array.isArray(data) ? data : []))
+      .catch(() => setEmpInitiatives([]))
+      .finally(() => setEmpLoading(false))
+  }, [user?.orgId])
 
   const loadTeam = useCallback(async () => {
     setTeamLoading(true)
@@ -558,6 +571,67 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
+          {/* Initiatives you're participating in as an employee */}
+          {(empLoading || empInitiatives.length > 0) && (
+            <div style={{ marginTop: 40 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: THEME.colors.text, margin: 0 }}>
+                  Participating as employee
+                </h2>
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                  background: THEME.colors.employee?.light || '#E6F7F0',
+                  color: THEME.colors.employee?.primary || '#1D9E75',
+                  border: `1px solid ${THEME.colors.employee?.border || '#C5EBE0'}`,
+                }}>
+                  {empInitiatives.length}
+                </span>
+              </div>
+              <p style={{ fontSize: 13, color: THEME.colors.textMuted, margin: '0 0 16px', lineHeight: 1.5 }}>
+                These are initiatives you've been shared on. Your perspective here is as a participant, not the leader.
+              </p>
+
+              {empLoading ? (
+                <p style={{ color: THEME.colors.textMuted, fontSize: 14 }}>Loading…</p>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                  gap: 16,
+                }}>
+                  {empInitiatives.map(init => (
+                    <Card
+                      key={init.id}
+                      hover
+                      onClick={() => router.push(`/initiative/${init.id}`)}
+                      padding={18}
+                      style={{ borderLeft: `3px solid ${THEME.colors.employee?.primary || '#1D9E75'}` }}
+                    >
+                      <div style={{ fontSize: 15, fontWeight: 600, color: THEME.colors.text, marginBottom: 6 }}>
+                        {init.title || 'Untitled'}
+                      </div>
+                      {init.leader_name && (
+                        <div style={{ fontSize: 12, color: THEME.colors.textMuted, marginBottom: 8 }}>
+                          Led by {init.leader_name}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Badge
+                          color={init.status === 'in-progress' ? THEME.colors.employee?.primary || '#1D9E75' : THEME.colors.textMuted}
+                        >
+                          {init.status || 'pending'}
+                        </Badge>
+                        <span style={{ fontSize: 12, color: THEME.colors.employee?.primary || '#1D9E75', fontWeight: 500 }}>
+                          Open →
+                        </span>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
     </AppShell>
