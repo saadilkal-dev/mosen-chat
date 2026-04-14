@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { getOrCreateAppUser } from '@/lib/auth'
+import { resolveEmployeeInviteContext } from '@/lib/employee-init-access'
 import {
-  getInviteByToken,
   getInitiative,
   getClosedLoopMessages,
   appendClosedLoopMessage,
@@ -18,16 +20,22 @@ export async function GET(req, { params }) {
   const { searchParams } = new URL(req.url)
   const token = searchParams.get('token')
 
+  let sessionEmail = null
   if (!token) {
-    return NextResponse.json({ error: 'Token required' }, { status: 401 })
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Sign in or use an invite link' }, { status: 401 })
+    }
+    const u = await getOrCreateAppUser(userId)
+    sessionEmail = u?.email || null
   }
 
-  const invite = await getInviteByToken(token)
-  if (!invite || !invite.orgId) {
+  const ctx = await resolveEmployeeInviteContext(initId, { token: token || undefined, sessionEmail })
+  if (!ctx) {
     return NextResponse.json({ error: 'Invalid or expired invite' }, { status: 401 })
   }
 
-  const messages = await getClosedLoopMessages(initId, invite.empEmail)
+  const messages = await getClosedLoopMessages(initId, ctx.empEmail)
 
   return NextResponse.json({ messages })
 }

@@ -29,7 +29,9 @@ export default function AuthProvider({ children }) {
   const loadProfile = useCallback(async () => {
     const res = await fetch('/api/auth/me', { credentials: 'include' })
     const data = await res.json().catch(() => ({}))
-    setAppProfile(data.user ?? null)
+    const next = data.user ?? null
+    setAppProfile(next)
+    return next
   }, [])
 
   useEffect(() => {
@@ -44,11 +46,17 @@ export default function AuthProvider({ children }) {
   }, [isLoaded, isSignedIn, clerkUser?.id, loadProfile])
 
   const refresh = useCallback(async () => {
-    await loadProfile()
+    return loadProfile()
   }, [loadProfile])
 
   const logout = useCallback(async () => {
-    await clerk.signOut({ redirectUrl: '/' })
+    try {
+      await clerk.signOut()
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.location.assign(`${window.location.origin}/`)
+      }
+    }
   }, [clerk])
 
   const mergedUser = useMemo(() => {
@@ -69,6 +77,10 @@ export default function AuthProvider({ children }) {
       orgId: appProfile?.orgId ?? null,
       orgName: appProfile?.orgName ?? null,
       role: appProfile?.role || 'leader',
+      onOrgRoster: !!appProfile?.onOrgRoster,
+      pendingLeaderProvision: !!appProfile?.pendingLeaderProvision,
+      hasLeaderProvisionForEmail: !!appProfile?.hasLeaderProvisionForEmail,
+      isPlatformAdmin: !!appProfile?.isPlatformAdmin,
     }
   }, [isSignedIn, clerkUser, appProfile])
 

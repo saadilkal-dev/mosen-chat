@@ -12,11 +12,12 @@ export async function POST(req) {
       return Response.json({ error: 'You must create an organisation first' }, { status: 400 })
     }
 
-    const { employees } = await req.json()
+    const { employees, skipInvites } = await req.json()
     if (!Array.isArray(employees) || employees.length === 0) {
       return Response.json({ error: 'At least one employee is required' }, { status: 400 })
     }
 
+    const deferInvites = !!skipInvites
     const orgId = user.orgId
     const supabase = getSupabase()
     const results = []
@@ -43,7 +44,7 @@ export async function POST(req) {
         continue
       }
 
-      const token = mkId()
+      const token = deferInvites ? null : mkId()
       const employee = {
         name: emp.name || '',
         email,
@@ -53,16 +54,18 @@ export async function POST(req) {
         addedAt: Date.now(),
       }
 
-      const { error: invErr } = await supabase.from('invites').insert({
-        token,
-        org_id: orgId,
-        emp_email: email,
-        emp_name: employee.name,
-        expires_at: expiresAt,
-      })
-      if (invErr) {
-        errors.push(invErr.message)
-        continue
+      if (!deferInvites) {
+        const { error: invErr } = await supabase.from('invites').insert({
+          token,
+          org_id: orgId,
+          emp_email: email,
+          emp_name: employee.name,
+          expires_at: expiresAt,
+        })
+        if (invErr) {
+          errors.push(invErr.message)
+          continue
+        }
       }
 
       const { error: empErr } = await supabase.from('org_employees').insert({
@@ -75,7 +78,9 @@ export async function POST(req) {
       })
       if (empErr) {
         errors.push(empErr.message)
-        await supabase.from('invites').delete().eq('token', token)
+        if (!deferInvites && token) {
+          await supabase.from('invites').delete().eq('token', token)
+        }
         continue
       }
 
@@ -88,9 +93,29 @@ export async function POST(req) {
       .select('*', { count: 'exact', head: true })
       .eq('org_id', orgId)
 
+    const added = results.length
+    const hadInput = Array.isArray(employees) && employees.length > 0
+
+    if (hadInput && added === 0 && errors.length > 0) {
+      const hint =
+        errors.some((e) => String(e).toLowerCase().includes('invite_token')) ||
+        errors.some((e) => String(e).toLowerCase().includes('null value'))
+          ? ' If you use skipInvites, apply migration 004_org_employee_optional_invite.sql (invite_token must be nullable).'
+          : ''
+      return Response.json(
+        {
+          error: `Could not save any team members.${hint}`,
+          added: 0,
+          skipped,
+          errors,
+        },
+        { status: 400 },
+      )
+    }
+
     return Response.json({
       ok: true,
-      added: results.length,
+      added,
       skipped,
       total: count ?? results.length,
       errors: errors.length > 0 ? errors : undefined,

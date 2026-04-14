@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { getOrCreateAppUser } from '@/lib/auth'
+import { resolveEmployeeInviteContext } from '@/lib/employee-init-access'
 import {
-  getInviteByToken,
   getConsentRecord,
   updateConsentDecision,
   listGrantedConsentsForTheme,
@@ -15,16 +17,26 @@ export async function POST(req, { params }) {
   try {
     const { token, consentId, decision, editedText } = await req.json()
 
-    if (!token || !consentId || !decision) {
-      return NextResponse.json({ error: 'token, consentId, and decision required' }, { status: 400 })
+    if (!consentId || !decision) {
+      return NextResponse.json({ error: 'consentId and decision required' }, { status: 400 })
     }
 
-    const invite = await getInviteByToken(token)
-    if (!invite || !invite.orgId) {
+    let sessionEmail = null
+    if (!token) {
+      const { userId } = await auth()
+      if (!userId) {
+        return NextResponse.json({ error: 'Sign in or use an invite link' }, { status: 401 })
+      }
+      const u = await getOrCreateAppUser(userId)
+      sessionEmail = u?.email || null
+    }
+
+    const ctx = await resolveEmployeeInviteContext(initId, { token: token || undefined, sessionEmail })
+    if (!ctx) {
       return NextResponse.json({ error: 'Invalid or expired invite' }, { status: 401 })
     }
 
-    const empEmail = invite.empEmail
+    const empEmail = ctx.empEmail
     const record = await getConsentRecord(initId, empEmail, consentId)
 
     if (!record) {

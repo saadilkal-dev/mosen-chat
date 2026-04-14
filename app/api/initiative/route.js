@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { mkId } from '@/lib/utils'
+import { getSupabase } from '@/lib/supabase'
 import { listInitiativesForOrg, createInitiativeRow, countAssignedEmployees, initiativeRowToLegacy } from '@/lib/leader-store'
 
 export const dynamic = 'force-dynamic'
+
+function serializeErr(err) {
+  if (!err) return 'Unknown error'
+  if (typeof err.message === 'string' && err.message) return err.message
+  return String(err)
+}
 
 export async function GET() {
   try {
@@ -41,7 +48,15 @@ export async function GET() {
 export async function POST(req) {
   try {
     const { userId, user } = await requireAuth()
-    const { title, type } = await req.json()
+
+    let body
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const { title, type } = body || {}
 
     if (!title || !title.trim()) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
@@ -49,6 +64,23 @@ export async function POST(req) {
 
     if (!user.orgId) {
       return NextResponse.json({ error: 'User must belong to an organization' }, { status: 400 })
+    }
+
+    const supabase = getSupabase()
+    const { data: orgRow, error: orgErr } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('id', user.orgId)
+      .maybeSingle()
+    if (orgErr) throw orgErr
+    if (!orgRow) {
+      return NextResponse.json(
+        {
+          error:
+            'Your organisation was not found in the database. Complete onboarding again (organisation name) or fix your workspace.',
+        },
+        { status: 400 },
+      )
     }
 
     const initId = mkId()
@@ -63,6 +95,11 @@ export async function POST(req) {
     return NextResponse.json({ ok: true, initId })
   } catch (err) {
     if (err instanceof Response) return err
-    return NextResponse.json({ error: 'Failed to create initiative' }, { status: 500 })
+    console.error('[POST /api/initiative]', err)
+    const detail = serializeErr(err)
+    return NextResponse.json(
+      { error: 'Failed to create initiative', detail },
+      { status: 500 },
+    )
   }
 }
