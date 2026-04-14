@@ -1,52 +1,75 @@
-import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+import { auth } from '@clerk/nextjs/server'
 import { getSupabase } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
-/**
- * Initiatives assigned to the signed-in user (by email), scoped to their org.
- */
-export async function GET() {
+export async function GET(req) {
   try {
-    const { user } = await requireAuth()
-    const email = (user.email || '').toLowerCase()
-    if (!email || !user.orgId) {
-      return NextResponse.json({ initiatives: [] })
+    const { userId } = await auth()
+    if (!userId) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supabase = getSupabase()
-    const { data: assignments, error: aErr } = await supabase
-      .from('initiative_assignments')
-      .select('initiative_id')
-      .eq('emp_email', email)
+    const sb = getSupabase()
 
-    if (aErr || !assignments?.length) {
-      return NextResponse.json({ initiatives: [] })
+    // Get user email
+    const { data: userProfile, error: profileError } = await sb
+      .from('app_user_profiles')
+      .select('email')
+      .eq('clerk_id', userId)
+      .single()
+
+    if (profileError || !userProfile?.email) {
+      return Response.json({ error: 'User profile not found' }, { status: 404 })
     }
 
-    const ids = [...new Set(assignments.map((r) => r.initiative_id))]
-    const { data: rows, error: iErr } = await supabase
+    const userEmail = userProfile.email
+
+    // Fetch initiatives where is_public = true
+    const { data: initiatives, error: initError } = await sb
       .from('initiatives')
-      .select('id, title, status, updated_at')
-      .in('id', ids)
-      .eq('org_id', user.orgId)
-      .order('updated_at', { ascending: false })
+      .select(`
+        id,
+        title,
+        brief,
+        brief_summary,
+        brief_excerpt,
+        playbook,
+        created_at,
+        published_at,
+        is_public,
+        shared_with
+      `)
+      .eq('is_public', true)
 
-    if (iErr || !rows) {
-      return NextResponse.json({ initiatives: [] })
+    if (initError) {
+      console.error('[employee/initiatives] fetch error:', initError)
+      return Response.json({ error: 'Failed to fetch initiatives' }, { status: 500 })
     }
 
-    const initiatives = rows.map((r) => ({
-      id: r.id,
-      title: r.title || 'Untitled',
-      status: r.status || 'draft',
-      lastActivity: r.updated_at ? new Date(r.updated_at).getTime() : Date.now(),
-    }))
+    let initiativesWithStatus = []
+    if (initiatives && initiatives.length > 0) {
+      initiativesWithStatus = initiatives.map(init => {
+        let status = 'pending'
+        if (init.published_at) {
+          status = 'in-progress'
+        }
 
-    return NextResponse.json({ initiatives })
+        return {
+          id: init.id,
+          title: init.title,
+          brief_summary: init.brief_summary || 'View the initiative for more details',
+          brief_excerpt: init.brief_excerpt || (init.brief ? init.brief.slice(0, 150) : ''),
+          leader_name: 'Your leader',
+          status,
+          published_at: init.published_at,
+        }
+      })
+    }
+
+    return Response.json(initiativesWithStatus)
   } catch (err) {
-    if (err instanceof Response) return err
-    return NextResponse.json({ error: 'Failed to load initiatives' }, { status: 500 })
+    console.error('[employee/initiatives] error:', err.message)
+    return Response.json({ error: err.message }, { status: 500 })
   }
 }
