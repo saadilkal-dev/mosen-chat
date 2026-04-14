@@ -112,9 +112,7 @@ export default function ConsentCard({ consentId, theme, proposedText, status, on
           <circle cx="8" cy="5.5" r="0.75" fill="#AAAAAA" />
         </svg>
         <p style={{ fontSize: 12.5, color: T.textMuted, margin: 0, lineHeight: 1.55 }}>
-          This will only surface as a pattern once{' '}
-          <strong style={{ color: T.textSub, fontWeight: 600 }}>at least 3 people</strong>{' '}
-          share similar feedback. No individual attribution. Silence means no — you must actively allow this.
+          This will be shared anonymously with your initiative leader. No individual attribution — your name is never attached. Silence means no — you must actively allow this.
         </p>
       </div>
 
