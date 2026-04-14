@@ -37,9 +37,14 @@ export async function POST(req) {
       const buffer = Buffer.from(await file.arrayBuffer())
 
       if (fileName.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
-        const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default
-        const parsed = await pdfParse(buffer)
-        text = parsed.text
+        const { PDFParse } = await import('pdf-parse')
+        const parser = new PDFParse({ data: buffer })
+        try {
+          const parsed = await parser.getText()
+          text = parsed.text
+        } finally {
+          await parser.destroy?.()
+        }
       } else {
         return NextResponse.json({ error: 'Only PDF files are supported' }, { status: 400 })
       }
