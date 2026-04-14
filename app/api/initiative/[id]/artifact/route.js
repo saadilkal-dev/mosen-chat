@@ -1,24 +1,15 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { ChatAnthropic } from '@langchain/anthropic'
-import { HumanMessage } from '@langchain/core/messages'
+import { getInitiativeRow } from '../../../../../lib/leader-store'
 import {
-  getInitiativeRow,
-  getPlaybookVersions,
-  getGeneratedArtifact,
-  saveGeneratedArtifact,
-} from '../../../../../lib/leader-store'
-import { artifactGenerationPrompt } from '../../../../../lib/mosen-prompts'
+  generateAndCacheArtifact,
+  normaliseCached,
+  buildArtifactKey,
+} from '../../../../../lib/artifact-service'
+import { getGeneratedArtifact } from '../../../../../lib/leader-store'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
-
-function aiText(content) {
-  if (typeof content === 'string') return content
-  if (Array.isArray(content))
-    return content.map((x) => (x && typeof x === 'object' && 'text' in x ? x.text : '')).join('')
-  return String(content ?? '')
-}
 
 // POST /api/initiative/[id]/artifact — Generate or retrieve a cached artifact
 export async function POST(req, { params }) {
@@ -37,46 +28,26 @@ export async function POST(req, { params }) {
     if (!init) return NextResponse.json({ error: 'Initiative not found' }, { status: 404 })
     if (init.leader_clerk_id !== userId) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
 
-    // Build a unique cache key from the artifact context
-    const artifactKey = [phaseName, activityTitle, artifactName]
-      .filter(Boolean)
-      .join('::')
-      .toLowerCase()
-      .replace(/[^a-z0-9:]+/g, '-')
-
-    // Check if already generated
+    // Check cache before generating (avoids re-auth overhead in shared helper)
+    const artifactKey = buildArtifactKey(phaseName, activityTitle, artifactName)
     const cached = await getGeneratedArtifact(id, artifactKey)
     if (cached) {
+      const { artifact, format } = normaliseCached(cached.content, artifactName)
       return NextResponse.json({
-        content: cached.content,
+        artifact,
+        format,
         generatedAt: cached.generated_at,
         cached: true,
       })
     }
 
-    // Generate via Claude
-    const prompt = artifactGenerationPrompt({
-      artifact_name: artifactName,
-      activity_title: activityTitle || '',
-      phase_name: phaseName || '',
-      initiative_title: init.title || 'Untitled',
-      brief_summary: init.summary || '',
-    })
-
-    const model = new ChatAnthropic({
-      model: 'claude-sonnet-4-20250514',
-      temperature: 0.5,
-      maxTokens: 2048,
-    })
-    const response = await model.invoke([new HumanMessage(prompt)])
-    const content = aiText(response.content)
-
-    // Cache it
-    await saveGeneratedArtifact(id, artifactKey, content)
+    // Generate (Haiku, ~1s vs 3-5s with Sonnet)
+    const result = await generateAndCacheArtifact(id, { artifactName, activityTitle, phaseName })
 
     return NextResponse.json({
-      content,
-      generatedAt: new Date().toISOString(),
+      artifact: result.artifact,
+      format: result.format,
+      generatedAt: result.generatedAt,
       cached: false,
     })
   } catch (err) {

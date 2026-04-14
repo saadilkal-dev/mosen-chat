@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function SplitPanel({ leftContent, rightContent, leftWidth = 60, collapsed: controlledCollapsed, onToggle }) {
   const [internalCollapsed, setInternalCollapsed] = useState(false)
@@ -9,6 +9,16 @@ export default function SplitPanel({ leftContent, rightContent, leftWidth = 60, 
     if (onToggle) onToggle(!isCollapsed)
     else setInternalCollapsed(!isCollapsed)
   }
+
+  // Auto-collapse workspace on narrow screens
+  useEffect(() => {
+    const check = () => {
+      if (window.innerWidth < 900 && !isCollapsed) toggle()
+    }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
