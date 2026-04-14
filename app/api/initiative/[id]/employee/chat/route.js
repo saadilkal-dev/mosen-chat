@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getInviteByToken, getInitiative, getChatMessages, saveChatMessages } from '@/lib/initiative-store'
+import { getInviteByToken, getInitiative, getChatMessages, saveChatMessages, getBrief } from '@/lib/initiative-store'
+import { getPlaybookVersions, briefContentToString } from '@/lib/leader-store'
 import { invokeEmployeeChat } from '@/lib/graph/employee-graph'
+import { buildEmployeeCurrentActivityString } from '@/lib/playbook-helpers'
 
 export async function GET(req, { params }) {
   const { id: initId } = params
@@ -44,12 +46,21 @@ export async function POST(req, { params }) {
     const createdAt = Number(initiative.createdAt) || Date.now()
     const weekNumber = Math.max(1, Math.ceil((Date.now() - createdAt) / (7 * 24 * 60 * 60 * 1000)))
 
+    const briefRow = await getBrief(initId)
+    const changeBriefText = briefRow?.content ? briefContentToString(briefRow.content) : ''
+    const playbookVersions = await getPlaybookVersions(initId)
+    const latestPlaybook = playbookVersions.length ? playbookVersions[playbookVersions.length - 1] : null
+    const phases = latestPlaybook?.phases || []
+    const currentActivityStr = buildEmployeeCurrentActivityString(phases)
+
     const empContext = {
       initId,
       empEmail: invite.empEmail,
       employee_name: invite.name,
       initiative_title: initiative.title,
       week_number: weekNumber,
+      change_brief: changeBriefText.trim() ? changeBriefText : null,
+      current_activity: currentActivityStr || null,
     }
 
     const threadId = `emp:${initId}:${invite.empEmail}`

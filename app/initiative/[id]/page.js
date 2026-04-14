@@ -77,7 +77,8 @@ export default function InitiativePage() {
           try { return JSON.parse(a).type || a.type } catch { return a.type }
         }).filter(Boolean)
 
-        if (types.includes('playbook')) setActiveTab('Playbook')
+        if (types.some((t) => ['playbook', 'playbook_draft', 'playbook_confirmed', 'experiment_card'].includes(t)))
+          setActiveTab('Playbook')
         else if (types.includes('brief')) setActiveTab('Brief')
         else if (types.includes('outreach_suggestion')) setActiveTab('Outreach')
         else if (types.includes('synthesis_card')) setActiveTab('Synthesis')

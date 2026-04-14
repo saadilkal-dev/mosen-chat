@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { invokeLeaderChat, loadInitContext } from '@/lib/graph/leader-graph'
-import { getLeaderChatMessages, saveLeaderChatMessages } from '@/lib/leader-store'
+import { getLeaderChatMessages, saveLeaderChatMessages, clearPendingPhaseCompletionFlag } from '@/lib/leader-store'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -31,6 +31,8 @@ export async function POST(req, { params }) {
       artifacts: result.artifacts || [],
     })
     await saveLeaderChatMessages(id, history)
+
+    await clearPendingPhaseCompletionFlag(id).catch(() => {})
 
     return NextResponse.json({
       response: result.response,

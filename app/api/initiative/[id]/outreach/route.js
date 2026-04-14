@@ -1,16 +1,31 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { getInitiativeRow, getOutreachMessages, setOutreachMessages, getAssignedEmails } from '@/lib/leader-store'
+import { countEmployeeEngagementAfter } from '@/lib/initiative-store'
 import { getSupabase } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req, { params }) {
   try {
-    await requireAuth()
+    const { userId } = await requireAuth()
     const { id } = params
+    const init = await getInitiativeRow(id)
+    if (!init) return NextResponse.json({ error: 'Initiative not found' }, { status: 404 })
+    if (init.leader_clerk_id !== userId) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+
     const messages = await getOutreachMessages(id)
-    return NextResponse.json({ messages })
+    const assigned = await getAssignedEmails(id)
+    const enriched = await Promise.all(
+      (messages || []).map(async (m) => {
+        if (m.status === 'approved' && m.sentAt) {
+          const eng = await countEmployeeEngagementAfter(id, m.sentAt, assigned)
+          return { ...m, engagement: eng }
+        }
+        return m
+      }),
+    )
+    return NextResponse.json({ messages: enriched })
   } catch (err) {
     if (err instanceof Response) return err
     return NextResponse.json({ error: 'Failed to load outreach' }, { status: 500 })
