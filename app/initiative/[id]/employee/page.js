@@ -203,6 +203,8 @@ export default function EmployeePage({ params, searchParams }) {
         }
 
         let hasHistory = false
+        // histRes failure means we can't confirm history is empty — do NOT trigger intro
+        const histFailed = !histRes.ok
         if (histRes.ok) {
           const histData = await histRes.json()
           for (const m of (histData.messages || [])) {
@@ -214,7 +216,8 @@ export default function EmployeePage({ params, searchParams }) {
         setMessages(initial)
         setPhase('ready')
 
-        if (!hasHistory && !triggeredRef.current) {
+        // Only trigger the intro if history confirmed empty — never if the request failed
+        if (!hasHistory && !histFailed && !triggeredRef.current) {
           triggeredRef.current = true
           triggerFirstMessage()
         }
