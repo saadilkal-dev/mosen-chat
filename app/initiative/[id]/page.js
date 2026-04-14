@@ -8,7 +8,8 @@ import ShareInitiativeModal from '@/components/leader/ShareInitiativeModal'
 import SplitPanel from '@/components/leader/SplitPanel'
 import WorkspaceView from '@/components/leader/WorkspaceView'
 import ArtifactChatCard from '@/components/leader/ArtifactChatCard'
-import PlaybookDraftCard from '@/components/leader/PlaybookDraftCard'
+import PlaybookApprovalCard from '@/components/leader/PlaybookApprovalCard'
+import OptionCardsChat from '@/components/leader/OptionCardsChat'
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
 const LEADER_COLOR   = '#534AB7'
@@ -70,19 +71,23 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
   const [activeView, setActiveView]       = useState('home')
   const [focusedActivity, setFocusedActivity] = useState(null)
   const [documentOpen, setDocumentOpen]   = useState(false)
+  const [openingChat, setOpeningChat]     = useState(false)
 
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+  const sessionStartFiredRef = useRef(false)
 
   const VIEW_FOR_TYPE = {
     playbook: 'playbook',
     playbook_draft: 'playbook',
     playbook_confirmed: 'playbook',
+    playbook_updated: null,
     brief: 'brief',
     outreach_suggestion: 'outreach',
     synthesis_card: 'synthesis',
     experiment_card: 'playbook',
     activity_artifact: 'playbook',
+    option_cards: null,
   }
 
   function handleArtifactCardClick(artifact) {
@@ -122,7 +127,7 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
           const parsedCards = Array.isArray(m.artifacts) && m.artifacts.length > 0
             ? m.artifacts.map(a => {
                 try { return typeof a === 'string' ? JSON.parse(a) : a } catch { return null }
-              }).filter(a => a && !a.error && VIEW_FOR_TYPE[a.type])
+              }).filter(a => a && !a.error && a.type in VIEW_FOR_TYPE)
             : undefined
           return {
             id: mkId(),
@@ -132,19 +137,37 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
           }
         }))
       } else {
-        setMessages([{
-          id: mkId(),
-          from: 'mosen',
-          text: `Let's build a clear picture of this change together. I'll ask you a few questions — one at a time — to understand what's really happening, why, and who it affects. Ready to start?`,
-        }])
+        if (sessionStartFiredRef.current) return
+        sessionStartFiredRef.current = true
+        setOpeningChat(true)
+        try {
+          const res = await fetch(`/api/initiative/${initiativeId}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ isSystemTrigger: true }),
+          })
+          const data = res.ok ? await res.json().catch(() => ({})) : {}
+          if (data.response?.trim()) {
+            setMessages([{
+              id: mkId(),
+              from: 'mosen',
+              text: data.response.trim(),
+            }])
+          } else {
+            setMessages([])
+          }
+        } catch {
+          setMessages([])
+        } finally {
+          setOpeningChat(false)
+        }
       }
     } catch {}
   }
 
-  async function handleSend() {
-    if (!input.trim() || loading) return
-    const msg = input.trim()
-    setInput('')
+  async function sendMessage(msg) {
+    if (!msg?.trim() || loading || openingChat) return
     setMessages(prev => [...prev, { id: mkId(), from: 'user', text: msg }])
     setLoading(true)
 
@@ -165,7 +188,7 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
 
       const parsedArtifacts = (data.artifacts || []).map(a => {
         try { return typeof a === 'string' ? JSON.parse(a) : a } catch { return null }
-      }).filter(a => a && !a.error && VIEW_FOR_TYPE[a.type])
+      }).filter(a => a && !a.error && a.type in VIEW_FOR_TYPE)
 
       setMessages(prev => [...prev, {
         id: mkId(),
@@ -179,6 +202,13 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
       setLoading(false)
       inputRef.current?.focus()
     }
+  }
+
+  function handleSend() {
+    if (!input.trim() || loading) return
+    const msg = input.trim()
+    setInput('')
+    sendMessage(msg)
   }
 
   const mdComponents = {
@@ -265,6 +295,18 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
             </div>
           </div>
 
+          {openingChat && messages.length === 0 && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 18, alignItems: 'center', color: '#888', fontSize: 13 }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                background: 'linear-gradient(135deg, #534AB7, #7B72D6)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 800, color: '#fff',
+              }}>M</div>
+              <span>Starting conversation…</span>
+            </div>
+          )}
+
           {messages.filter(msg => msg.text?.trim()).map((msg, i) => (
             <div key={msg.id || i} style={{
               display: 'flex', justifyContent: msg.from === 'user' ? 'flex-end' : 'flex-start',
@@ -307,18 +349,25 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
                   </div>
                   {msg.from === 'mosen' && msg.cards?.length > 0 && msg.cards.map((card, ci) => (
                     card.type === 'playbook_draft'
-                      ? <PlaybookDraftCard
+                      ? <PlaybookApprovalCard
                           key={ci}
                           draft={card}
                           initId={initiativeId}
                           onConfirmed={handlePlaybookConfirmed}
                           onRequestChanges={handleRequestChanges}
                         />
-                      : <ArtifactChatCard
-                          key={ci}
-                          artifact={card}
-                          onOpen={handleArtifactCardClick}
-                        />
+                      : card.type === 'option_cards'
+                        ? <OptionCardsChat
+                            key={ci}
+                            options={card.options}
+                            onSelect={(value) => sendMessage(value)}
+                            disabled={loading}
+                          />
+                        : <ArtifactChatCard
+                            key={ci}
+                            artifact={card}
+                            onOpen={handleArtifactCardClick}
+                          />
                   ))}
                 </div>
               </div>
@@ -366,7 +415,7 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
               }}
               placeholder="Talk to Mosen about this change…"
-              disabled={loading}
+              disabled={loading || openingChat}
               rows={1}
               style={{
                 flex: 1, resize: 'none', padding: '10px 14px', fontSize: 14, borderRadius: 12,
@@ -381,7 +430,7 @@ function LeaderView({ initiativeId, initiative, isPublic: initialIsPublic }) {
             />
             <button
               onClick={handleSend}
-              disabled={!input.trim() || loading}
+              disabled={!input.trim() || loading || openingChat}
               style={{
                 width: 40, height: 40, borderRadius: 10, border: 'none',
                 cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',

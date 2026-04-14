@@ -48,6 +48,58 @@ function phaseDescriptionBlock(phase) {
 }
 
 
+function VersionDiff({ diff }) {
+  const [open, setOpen] = useState(false)
+  const added = diff?.added || []
+  const removed = diff?.removed || []
+  const unchanged = diff?.unchanged ?? null
+  if (added.length === 0 && removed.length === 0) return null
+  return (
+    <div style={{ marginBottom: 18, borderRadius: 8, border: '1px solid #EBEBEA', overflow: 'hidden', fontSize: 12 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '8px 12px', background: '#FAFAF8', border: 'none', cursor: 'pointer',
+          fontFamily: "'DM Sans', system-ui, sans-serif", fontSize: 12,
+        }}
+      >
+        <span style={{ fontWeight: 600, color: '#1A1A18' }}>What changed</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {added.length > 0 && (
+            <span style={{ color: '#1D9E75', fontWeight: 600 }}>+{added.length} added</span>
+          )}
+          {removed.length > 0 && (
+            <span style={{ color: '#C0392B', fontWeight: 600 }}>−{removed.length} removed</span>
+          )}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', color: '#999' }}>
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </button>
+      {open && (
+        <div style={{ padding: '8px 12px 10px', borderTop: '1px solid #EBEBEA', background: '#fff' }}>
+          {added.map((title, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 4 }}>
+              <span style={{ color: '#1D9E75', fontWeight: 700, flexShrink: 0 }}>+</span>
+              <span style={{ color: '#3A3A38' }}>{title}</span>
+            </div>
+          ))}
+          {removed.map((title, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 4 }}>
+              <span style={{ color: '#C0392B', fontWeight: 700, flexShrink: 0 }}>−</span>
+              <span style={{ color: '#3A3A38', textDecoration: 'line-through', opacity: 0.7 }}>{title}</span>
+            </div>
+          ))}
+          {typeof unchanged === 'number' && unchanged > 0 && (
+            <div style={{ color: '#B0B0AA', marginTop: 4 }}>{unchanged} activit{unchanged === 1 ? 'y' : 'ies'} unchanged</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function PlaybookCard({
   versions = [],
   activeVersion: controlledVersion,
@@ -204,6 +256,11 @@ export default function PlaybookCard({
         <div style={{ fontSize: 12, color: '#666', fontStyle: 'italic', marginBottom: 18, padding: '8px 12px', background: '#F6F5FF', borderRadius: 8, border: '1px solid #EAE8FC' }}>
           {current.changeNote}
         </div>
+      )}
+
+      {/* ── Version diff (What changed) ── */}
+      {current.diff && current.version > 1 && (
+        <VersionDiff diff={current.diff} />
       )}
 
       {/* ── Phase cards ── */}
