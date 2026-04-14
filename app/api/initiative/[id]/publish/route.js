@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { getSupabase } from '@/lib/supabase'
 import { getOrgRoster } from '@/lib/leader-store'
-import { buildInitiativeShareEmail, sendEmail } from '@/lib/email'
+import { sendInitiativeInvites } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,60 +67,44 @@ export async function POST(req, { params }) {
       updated = { ...initiative, is_public }
     }
 
+    // 2b. If publishing, auto-approve the employee brief so employees can see it
+    if (is_public) {
+      try {
+        const { data: existingBrief } = await sb
+          .from('initiative_briefs')
+          .select('initiative_id, approved')
+          .eq('initiative_id', id)
+          .maybeSingle()
+
+        if (existingBrief && !existingBrief.approved) {
+          await sb
+            .from('initiative_briefs')
+            .update({ approved: true, updated_at: new Date().toISOString() })
+            .eq('initiative_id', id)
+        }
+      } catch (briefErr) {
+        console.warn('[publish] brief auto-approve failed (non-fatal):', briefErr.message)
+      }
+    }
+
     // 3. If making public, send invites to org roster
     let invitesSent = 0
-    const inviteErrors = []
 
     if (is_public && initiative.org_id) {
       try {
         const roster = await getOrgRoster(initiative.org_id)
+        const emails = roster.filter(m => m.email).map(m => m.email)
 
-        for (const member of roster) {
-          if (!member.email) continue
-
-          try {
-            // Build a simple invite URL — token-based if invites table exists, else direct link
-            let inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/initiative/${id}/employee`
-
-            // Try inserting into initiative_invites (only exists after migration 009)
-            try {
-              const token = crypto.randomUUID().replace(/-/g, '')
-              const { error: insertErr } = await sb
-                .from('initiative_invites')
-                .insert({
-                  initiative_id: id,
-                  employee_email: member.email,
-                  token,
-                  status: 'pending',
-                })
-              if (!insertErr) {
-                inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/initiative/${id}/employee?token=${token}`
-              }
-            } catch {}
-
-            // Send email
-            const emailPayload = buildInitiativeShareEmail({
-              employeeName: member.name || member.email.split('@')[0],
-              leaderName: 'Your leader',
-              initiativeTitle: initiative.title,
-              briefExcerpt: 'View the initiative to read the full change brief.',
-              inviteUrl,
-            })
-
-            await sendEmail({
-              to: member.email,
-              subject: emailPayload.subject,
-              html: emailPayload.html,
-            })
-
-            invitesSent++
-          } catch (emailErr) {
-            inviteErrors.push({ email: member.email, error: emailErr.message })
-            console.error('[publish] email failed for', member.email, emailErr.message)
+        if (emails.length > 0) {
+          const results = await sendInitiativeInvites(id, initiative.title, emails, initiative.org_id)
+          invitesSent = results.filter(r => r.success).length
+          const failed = results.filter(r => !r.success)
+          if (failed.length) {
+            console.error('[publish] some invite emails failed:', failed)
           }
         }
       } catch (rosterErr) {
-        console.error('[publish] roster fetch failed:', rosterErr.message)
+        console.error('[publish] roster/invite error:', rosterErr.message)
         // Non-fatal — the initiative is still published
       }
     }

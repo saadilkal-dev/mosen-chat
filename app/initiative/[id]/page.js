@@ -546,52 +546,7 @@ function EmployeeView({ initiativeId, initiative, brief }) {
 
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: "'DM Sans', sans-serif" }}>
-      {/* Left: Brief / context blade */}
-      <div style={{ width: 360, borderRight: '1px solid #EBEBEA', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #EBEBEA' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-              <rect x="3" y="1.5" width="11" height="15" rx="2" stroke={EMPLOYEE_COLOR} strokeWidth="1.5" />
-              <path d="M6 6.5h8M6 9.5h8M6 12.5h5" stroke={EMPLOYEE_COLOR} strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <span style={{ fontSize: 11, fontWeight: 700, color: EMPLOYEE_COLOR, textTransform: 'uppercase', letterSpacing: '0.6px' }}>Change Initiative</span>
-          </div>
-          <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: '#1A1A18', lineHeight: 1.35, letterSpacing: '-0.2px' }}>
-            {initiative.title}
-          </h2>
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-          {briefText ? (
-            <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: EMPLOYEE_COLOR, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>
-                Change Brief
-              </div>
-              <p style={{ fontSize: 14, color: '#444', lineHeight: 1.72, margin: 0, whiteSpace: 'pre-wrap' }}>
-                {briefText}
-              </p>
-            </>
-          ) : (
-            <div style={{ background: '#F9F9F7', border: '1px dashed #DEDED6', borderRadius: 12, padding: '18px 20px', textAlign: 'center' }}>
-              <p style={{ fontSize: 13, color: '#BBB', margin: 0 }}>Brief not yet available</p>
-            </div>
-          )}
-        </div>
-
-        <div style={{ padding: '12px 20px', borderTop: '1px solid #EBEBEA', background: EMPLOYEE_LIGHT }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
-              <path d="M10 1.5L3 4.5V9C3 13.1 6 16.9 10 18C14 16.9 17 13.1 17 9V4.5L10 1.5Z" fill={EMPLOYEE_LIGHT} stroke={EMPLOYEE_COLOR} strokeWidth="1.5" strokeLinejoin="round" />
-              <path d="M7 10L9 12L13 8" stroke={EMPLOYEE_COLOR} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <p style={{ fontSize: 12, color: EMPLOYEE_DARK, margin: 0, lineHeight: 1.45 }}>
-              Your conversation is confidential. Nothing is shared without your consent.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right: Chat */}
+      {/* Left: Chat */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#FAFAF8' }}>
         <div style={{ height: 56, background: '#fff', borderBottom: '1px solid #EBEBEA', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 10, flexShrink: 0 }}>
           <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#DFF3EC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -602,7 +557,11 @@ function EmployeeView({ initiativeId, initiative, brief }) {
             </svg>
           </div>
           <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1A18', letterSpacing: '-0.3px' }}>mosen</span>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, background: EMPLOYEE_LIGHT, border: `1px solid ${EMPLOYEE_BORDER}`, borderRadius: 20, padding: '5px 11px' }}>
+          <div style={{ width: 1, height: 16, background: '#EBEBEA' }} />
+          <span style={{ fontSize: 13, color: '#888', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {initiative.title}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: EMPLOYEE_LIGHT, border: `1px solid ${EMPLOYEE_BORDER}`, borderRadius: 20, padding: '5px 11px' }}>
             <svg width="11" height="11" viewBox="0 0 20 20" fill="none">
               <path d="M10 1.5L3 4.5V9C3 13.1 6 16.9 10 18C14 16.9 17 13.1 17 9V4.5L10 1.5Z" fill={EMPLOYEE_LIGHT} stroke={EMPLOYEE_COLOR} strokeWidth="1.5" strokeLinejoin="round" />
               <path d="M7 10L9 12L13 8" stroke={EMPLOYEE_COLOR} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -680,6 +639,51 @@ function EmployeeView({ initiativeId, initiative, brief }) {
                 <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Right: Brief blade */}
+      <div style={{ width: 380, borderLeft: '1px solid #EBEBEA', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #EBEBEA' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+              <rect x="3" y="1.5" width="11" height="15" rx="2" stroke={EMPLOYEE_COLOR} strokeWidth="1.5" />
+              <path d="M6 6.5h8M6 9.5h8M6 12.5h5" stroke={EMPLOYEE_COLOR} strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span style={{ fontSize: 11, fontWeight: 700, color: EMPLOYEE_COLOR, textTransform: 'uppercase', letterSpacing: '0.6px' }}>Change Initiative</span>
+          </div>
+          <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: '#1A1A18', lineHeight: 1.35, letterSpacing: '-0.2px' }}>
+            {initiative.title}
+          </h2>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+          {briefText ? (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: EMPLOYEE_COLOR, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>
+                Change Brief
+              </div>
+              <p style={{ fontSize: 14, color: '#444', lineHeight: 1.72, margin: 0, whiteSpace: 'pre-wrap' }}>
+                {briefText}
+              </p>
+            </>
+          ) : (
+            <div style={{ background: '#F9F9F7', border: '1px dashed #DEDED6', borderRadius: 12, padding: '18px 20px', textAlign: 'center' }}>
+              <p style={{ fontSize: 13, color: '#BBB', margin: 0 }}>Brief not yet available</p>
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: '12px 20px', borderTop: '1px solid #EBEBEA', background: EMPLOYEE_LIGHT }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+              <path d="M10 1.5L3 4.5V9C3 13.1 6 16.9 10 18C14 16.9 17 13.1 17 9V4.5L10 1.5Z" fill={EMPLOYEE_LIGHT} stroke={EMPLOYEE_COLOR} strokeWidth="1.5" strokeLinejoin="round" />
+              <path d="M7 10L9 12L13 8" stroke={EMPLOYEE_COLOR} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <p style={{ fontSize: 12, color: EMPLOYEE_DARK, margin: 0, lineHeight: 1.45 }}>
+              Your conversation is confidential. Nothing is shared without your consent.
+            </p>
           </div>
         </div>
       </div>
