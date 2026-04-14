@@ -47,54 +47,8 @@ export default function OutreachCard({ outreachList = [], initId, onRefresh }) {
     boxShadow: THEME.shadow.sm,
   }
 
-  const totalMessages = outreachList.length
-  const sentCount = outreachList.filter((m) => m.status === 'approved').length
-  const pendingCount = totalMessages - sentCount
-
   return (
     <div style={{ padding: 20 }}>
-      {totalMessages > 0 && (
-        <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-          <div
-            style={{
-              padding: '8px 14px',
-              borderRadius: 10,
-              background: THEME.colors.surface,
-              border: `1px solid ${THEME.colors.border}`,
-              fontSize: 12,
-            }}
-          >
-            <span style={{ fontWeight: 600, color: THEME.colors.leader.primary }}>{totalMessages}</span>
-            <span style={{ color: THEME.colors.textMuted, marginLeft: 4 }}>total</span>
-          </div>
-          <div
-            style={{
-              padding: '8px 14px',
-              borderRadius: 10,
-              background: THEME.colors.employee.light,
-              border: `1px solid ${THEME.colors.employee.border}`,
-              fontSize: 12,
-            }}
-          >
-            <span style={{ fontWeight: 600, color: THEME.colors.employee.primary }}>{sentCount}</span>
-            <span style={{ color: THEME.colors.employee.primary, marginLeft: 4 }}>sent</span>
-          </div>
-          {pendingCount > 0 && (
-            <div
-              style={{
-                padding: '8px 14px',
-                borderRadius: 10,
-                background: THEME.colors.warningBg,
-                border: '1px solid #F5E6C8',
-                fontSize: 12,
-              }}
-            >
-              <span style={{ fontWeight: 600, color: THEME.colors.warning }}>{pendingCount}</span>
-              <span style={{ color: THEME.colors.warning, marginLeft: 4 }}>pending</span>
-            </div>
-          )}
-        </div>
-      )}
       {outreachList.map((msg, index) => {
         const rowKey = msg.id != null ? String(msg.id) : `outreach-${index}`
         const isOpen = expandedId === msg.id || editingId === msg.id
@@ -152,7 +106,13 @@ export default function OutreachCard({ outreachList = [], initId, onRefresh }) {
                         </span>
                       )}
                     </div>
-                  ) : (
+                  ) : null}
+                  {msg.status === 'approved' && msg.engagement && msg.engagement.assigned > 0 && (
+                    <div style={{ fontSize: 11, color: THEME.colors.textMuted, marginBottom: 6 }}>
+                      {msg.engagement.chattedSinceSend}/{msg.engagement.assigned} assigned employees messaged after send
+                    </div>
+                  )}
+                  {msg.status !== 'approved' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                       <div
                         style={{
@@ -166,7 +126,7 @@ export default function OutreachCard({ outreachList = [], initId, onRefresh }) {
                       <span style={{ fontSize: 12, color: THEME.colors.warning, fontWeight: 600 }}>Pending approval</span>
                       <style>{`@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.5 } }`}</style>
                     </div>
-                  )}
+                  ) : null}
 
                   <div
                     style={{

@@ -91,6 +91,8 @@ export async function POST(req, { params }) {
     }
     await saveLeaderChatMessages(id, history)
 
+    await clearPendingPhaseCompletionFlag(id).catch(() => {})
+
     return NextResponse.json({
       response: result.response,
       artifacts: result.artifacts || [],

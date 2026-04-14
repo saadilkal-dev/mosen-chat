@@ -405,7 +405,7 @@ export default function PlaybookCard({
                           </svg>
                           {a}
                         </button>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>
