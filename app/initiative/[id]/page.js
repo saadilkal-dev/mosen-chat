@@ -643,8 +643,8 @@ function EmployeeView({ initiativeId, initiative, brief }) {
         </div>
       </div>
 
-      {/* Right: Brief blade */}
-      <div style={{ width: 380, borderLeft: '1px solid #EBEBEA', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      {/* Right: Brief blade — 45% of viewport width */}
+      <div style={{ flex: '0 0 45%', maxWidth: '45%', borderLeft: '1px solid #EBEBEA', backgroundColor: '#fff', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #EBEBEA' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none">

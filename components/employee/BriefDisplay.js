@@ -42,10 +42,48 @@ export default function BriefDisplay({ brief, initiativeTitle }) {
 
   // ── Brief available ───────────────────────────────────────────────────────
   const text = typeof brief.content === 'string' ? brief.content : (brief.content?.body || '')
-  const paragraphs = text
-    .split('\n')
-    .map(p => p.trim())
-    .filter(Boolean)
+
+  // Parse the brief text to identify sections (handles both plain text and structured)
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+
+  // Map section prefixes to readable titles
+  const sectionTitles = {
+    'What\'s changing': '📍 What\'s Changing',
+    'Why it matters': '💡 Why It Matters',
+    'Who\'s affected': '👥 Who\'s Affected',
+    'What success looks like': '✅ What Success Looks Like',
+    'What we don\'t know yet': '❓ What We Don\'t Know Yet',
+  }
+
+  // Parse sections from text
+  let sections = []
+  let currentSection = null
+
+  lines.forEach(line => {
+    // Check if line is a section header
+    const isHeader = Object.keys(sectionTitles).some(key =>
+      line.toLowerCase().includes(key.toLowerCase())
+    )
+
+    if (isHeader) {
+      if (currentSection) sections.push(currentSection)
+      const headerKey = Object.keys(sectionTitles).find(key =>
+        line.toLowerCase().includes(key.toLowerCase())
+      )
+      currentSection = {
+        title: sectionTitles[headerKey],
+        content: [],
+      }
+    } else if (currentSection && line) {
+      currentSection.content.push(line)
+    }
+  })
+
+  if (currentSection) sections.push(currentSection)
+
+  // If no structured sections found, treat as plain text
+  const hasStructure = sections.length > 0
+  const paragraphs = !hasStructure ? lines : []
 
   return (
     <div style={{
@@ -69,16 +107,43 @@ export default function BriefDisplay({ brief, initiativeTitle }) {
           <path d="M6 6.5h8M6 9.5h8M6 12.5h5" stroke={T.green} strokeWidth="1.5" strokeLinecap="round" />
         </svg>
         <span style={{ fontSize: 11, fontWeight: 700, color: T.green, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-          Initiative Brief
+          Change Brief
         </span>
       </div>
 
       {/* Card body */}
       <div style={{ padding: '18px 20px 20px' }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: '0 0 14px', letterSpacing: '-0.2px', lineHeight: 1.35 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: '0 0 16px', letterSpacing: '-0.2px', lineHeight: 1.35 }}>
           {initiativeTitle}
         </h2>
-        {paragraphs.map((p, i) => (
+
+        {/* Structured sections */}
+        {hasStructure && sections.map((section, idx) => (
+          <div key={idx} style={{ marginBottom: idx < sections.length - 1 ? 18 : 0 }}>
+            <h3 style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: T.green,
+              margin: '0 0 8px',
+              letterSpacing: '-0.1px',
+            }}>
+              {section.title}
+            </h3>
+            {section.content.map((para, j) => (
+              <p key={j} style={{
+                fontSize: 13.5,
+                color: T.textSub,
+                lineHeight: 1.72,
+                margin: j < section.content.length - 1 ? '0 0 8px' : 0,
+              }}>
+                {para}
+              </p>
+            ))}
+          </div>
+        ))}
+
+        {/* Plain text fallback */}
+        {!hasStructure && paragraphs.map((p, i) => (
           <p key={i} style={{
             fontSize: 13.5,
             color: T.textSub,

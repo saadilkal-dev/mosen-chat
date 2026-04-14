@@ -323,7 +323,7 @@ export default function EmployeePage({ params, searchParams }) {
 
   // ── render ────────────────────────────────────────────────────────────────
   return (
-    <div className="chat-page" style={{ display: 'flex', flexDirection: 'column', background: T.bg }}>
+    <div className="chat-page" style={{ display: 'flex', height: '100vh', flexDirection: 'column', background: T.bg }}>
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header style={{ height: 56, background: T.surface, borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', padding: '0 20px', gap: 12, flexShrink: 0, zIndex: 10 }}>
@@ -356,48 +356,44 @@ export default function EmployeePage({ params, searchParams }) {
         </div>
       </header>
 
-      {/* ── Data ownership strip ─────────────────────────────────────────────── */}
-      <div role="note" style={{ background: T.greenLight, borderBottom: `1px solid ${T.greenBorder}`, padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
-        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-          <path d="M10 1.5L3 4.5V9C3 13.1 6 16.9 10 18C14 16.9 17 13.1 17 9V4.5L10 1.5Z" fill={T.greenLight} stroke={T.green} strokeWidth="1.5" strokeLinejoin="round" />
-          <path d="M7 10L9 12L13 8" stroke={T.green} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <p style={{ fontSize: 12, color: T.greenDark, margin: 0, lineHeight: 1.45 }}>
-          Your data belongs to you. Nothing from this conversation will be shared without your explicit, informed consent.
-        </p>
-      </div>
+      {/* ── Main body: two-column layout ─────────────────────────────────────── */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
 
-      {/* ── Messages ─────────────────────────────────────────────────────────── */}
-      <main ref={scrollRef} id="messages" aria-label="Conversation" style={{ flex: 1, overflowY: 'auto', padding: '28px 20px 16px', scrollBehavior: 'smooth' }}>
-        <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+        {/* Left: Chat column */}
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+          {/* ── Data ownership strip ─────────────────────────────────────────────── */}
+          <div role="note" style={{ background: T.greenLight, borderBottom: `1px solid ${T.greenBorder}`, padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+              <path d="M10 1.5L3 4.5V9C3 13.1 6 16.9 10 18C14 16.9 17 13.1 17 9V4.5L10 1.5Z" fill={T.greenLight} stroke={T.green} strokeWidth="1.5" strokeLinejoin="round" />
+              <path d="M7 10L9 12L13 8" stroke={T.green} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <p style={{ fontSize: 12, color: T.greenDark, margin: 0, lineHeight: 1.45 }}>
+              Your data belongs to you. Nothing from this conversation will be shared without your explicit, informed consent.
+            </p>
+          </div>
 
-          {annotated.map((msg, idx) => {
+          {/* ── Messages ─────────────────────────────────────────────────────────── */}
+          <main ref={scrollRef} id="messages" aria-label="Conversation" style={{ flex: 1, overflowY: 'auto', padding: '28px 20px 16px', scrollBehavior: 'smooth' }}>
+            <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
 
-            // ── Brief card ─────────────────────────────────────────────────
-            if (msg.type === 'brief') {
-              return (
-                <div key={msg.id} style={{ marginBottom: 24, animation: 'msgIn 0.25s ease-out' }}>
-                  <BriefDisplay brief={msg.data} initiativeTitle={msg.initiativeTitle} />
-                </div>
-              )
-            }
+              {annotated.map((msg, idx) => {
 
-            // ── Closed-loop card (from server on load) ─────────────────────
-            if (msg.type === 'closed_loop') {
-              return (
-                <div key={msg.id} style={{ marginBottom: 24, animation: 'msgIn 0.25s ease-out' }}>
-                  <ClosedLoopCard message={msg.data.message} changeDescription={msg.data.changeDescription} createdAt={msg.data.createdAt} />
-                </div>
-              )
-            }
+                // ── Closed-loop card (from server on load) ─────────────────────
+                if (msg.type === 'closed_loop') {
+                  return (
+                    <div key={msg.id} style={{ marginBottom: 24, animation: 'msgIn 0.25s ease-out' }}>
+                      <ClosedLoopCard message={msg.data.message} changeDescription={msg.data.changeDescription} createdAt={msg.data.createdAt} />
+                    </div>
+                  )
+                }
 
-            // ── Chat message ───────────────────────────────────────────────
-            const isMosen   = msg.from === 'mosen'
-            const isError   = !!msg.error
-            const showAvatar  = msg.isLastInGroup
-            const gapBottom   = msg.isLastInGroup ? 20 : 4
+                // ── Chat message ───────────────────────────────────────────────
+                const isMosen   = msg.from === 'mosen'
+                const isError   = !!msg.error
+                const showAvatar  = msg.isLastInGroup
+                const gapBottom   = msg.isLastInGroup ? 20 : 4
 
-            return (
+                return (
               <div key={msg.id} style={{ marginBottom: gapBottom, animation: 'msgIn 0.25s ease-out' }}>
                 {/* Bubble row */}
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexDirection: isMosen ? 'row' : 'row-reverse' }}>
@@ -485,13 +481,13 @@ export default function EmployeePage({ params, searchParams }) {
             </div>
           )}
 
-          <div aria-hidden="true" style={{ height: 8 }} />
-        </div>
-      </main>
+              <div aria-hidden="true" style={{ height: 8 }} />
+            </div>
+          </main>
 
-      {/* ── Input ────────────────────────────────────────────────────────────── */}
-      <footer style={{ background: T.surface, borderTop: `1px solid ${T.border}`, padding: '12px 20px 20px', flexShrink: 0 }}>
-        <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+          {/* ── Input ────────────────────────────────────────────────────────────── */}
+          <footer style={{ background: T.surface, borderTop: `1px solid ${T.border}`, padding: '12px 20px 20px', flexShrink: 0 }}>
+            <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', gap: 10, alignItems: 'flex-end' }}>
           {/* Textarea wrapper — focus ring lives here */}
           <div
             style={{
@@ -553,11 +549,72 @@ export default function EmployeePage({ params, searchParams }) {
           </button>
         </div>
 
-        {/* Hint — appears only when focused */}
-        <p id="send-hint" style={{ maxWidth: 680, margin: '6px auto 0', fontSize: 11, color: inputFocused ? T.textFaint : 'transparent', textAlign: 'right', transition: 'color 0.15s ease', userSelect: 'none' }}>
-          Enter to send · Shift+Enter for new line
-        </p>
-      </footer>
+            {/* Hint — appears only when focused */}
+            <p id="send-hint" style={{ maxWidth: 680, margin: '6px auto 0', fontSize: 11, color: inputFocused ? T.textFaint : 'transparent', textAlign: 'right', transition: 'color 0.15s ease', userSelect: 'none' }}>
+              Enter to send · Shift+Enter for new line
+            </p>
+          </footer>
+        </div>
+
+        {/* Right: Change Brief sidebar — 45% of viewport width */}
+        <div style={{ flex: '0 0 45%', maxWidth: '45%', borderLeft: `1px solid ${T.border}`, background: '#FAFAF8', display: 'flex', flexDirection: 'column' }}>
+          {/* Brief header */}
+          <div style={{ padding: '16px 20px 12px', borderBottom: `1px solid ${T.border}`, background: T.surface }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <rect x="3" y="1.5" width="11" height="15" rx="2" stroke={T.green} strokeWidth="1.5" />
+                <path d="M6 6.5h8M6 9.5h8M6 12.5h5" stroke={T.green} strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <span style={{ fontSize: 12, fontWeight: 700, color: T.green, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Change Brief</span>
+            </div>
+          </div>
+
+          {/* Brief content — scrollable */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+            {(annotated.find(m => m.type === 'brief')?.data) ? (
+              <div>
+                <BriefDisplay
+                  brief={annotated.find(m => m.type === 'brief').data}
+                  initiativeTitle={annotated.find(m => m.type === 'brief').initiativeTitle}
+                />
+              </div>
+            ) : (
+              <div style={{
+                background: '#F9F9F7',
+                border: '1px dashed #DEDED6',
+                borderRadius: 12,
+                padding: '20px 18px',
+                textAlign: 'center',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <svg width="28" height="28" viewBox="0 0 20 20" fill="none" style={{ marginBottom: 8, opacity: 0.4 }}>
+                  <rect x="3" y="1.5" width="11" height="15" rx="2" stroke="#DEDED6" strokeWidth="1.5" />
+                  <path d="M6 6.5h8M6 9.5h8M6 12.5h5" stroke="#DEDED6" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#999', margin: '0 0 4px' }}>Brief not yet available</p>
+                <p style={{ fontSize: 12, color: '#BBB', margin: 0, lineHeight: 1.5 }}>The team is preparing the initiative brief</p>
+              </div>
+            )}
+          </div>
+
+          {/* Data protection footer */}
+          <div style={{ padding: '12px 16px', borderTop: `1px solid ${T.border}`, background: T.surface }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0, marginTop: 2 }}>
+                <path d="M10 1.5L3 4.5V9C3 13.1 6 16.9 10 18C14 16.9 17 13.1 17 9V4.5L10 1.5Z" fill={T.greenLight} stroke={T.green} strokeWidth="1.5" strokeLinejoin="round" />
+                <path d="M7 10L9 12L13 8" stroke={T.green} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <p style={{ fontSize: 11, color: T.greenDark, margin: 0, lineHeight: 1.5 }}>
+                Your conversation is confidential. Nothing shared without your consent.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ── Global styles ─────────────────────────────────────────────────────── */}
       <style>{`
