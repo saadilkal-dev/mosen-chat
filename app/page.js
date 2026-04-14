@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { THEME } from '../lib/theme'
 import { useAuth } from '../components/providers/AuthProvider'
 import Button from '../components/ui/Button'
